@@ -347,6 +347,8 @@ class FTPFileSystem(BaseFileSystemOperations):
                 raise NTStatusObjectNameNotFound()
             except PermissionError:
                 raise NTStatusAccessDenied()
+            except TimeoutError:
+                raise NTStatusIOTimeout()
 
         result = []
         past_marker = marker is None
@@ -447,7 +449,7 @@ class FTPFileSystem(BaseFileSystemOperations):
         except FileNotFoundError:
             raise NTStatusObjectNameNotFound()
         except TimeoutError:
-            raise NTStatusAccessDenied()
+            raise NTStatusIOTimeout()
 
     @operation
     def set_file_info(self, file_context: OpenedContext, file_info: dict[str, Any]) -> None:
@@ -562,7 +564,7 @@ class FTPFileSystem(BaseFileSystemOperations):
         except PermissionError:
             raise NTStatusAccessDenied()
         except TimeoutError:
-            raise NTStatusAccessDenied()
+            raise NTStatusIOTimeout()
 
     @operation
     def cleanup(self, file_context: OpenedContext, file_name: str, flags: int) -> None:
@@ -575,8 +577,8 @@ class FTPFileSystem(BaseFileSystemOperations):
                 self.ftp.write_file(file_context.path, data, 0)
                 self.meta_cache.invalidate(file_context.path)
                 file_context.dirty = False
-            except Exception:
-                pass  # Best effort flush
+            except Exception as e:
+                logger.warning("cleanup: flush failed for %s: %s", file_context.path, e)
 
         # Handle deletion
         if not (flags & FspCleanupDelete):
@@ -648,4 +650,4 @@ class FTPFileSystem(BaseFileSystemOperations):
         except PermissionError:
             raise NTStatusAccessDenied()
         except TimeoutError:
-            raise NTStatusAccessDenied()
+            raise NTStatusIOTimeout()
