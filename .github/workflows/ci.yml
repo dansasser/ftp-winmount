@@ -43,17 +43,29 @@ jobs:
 
       - name: Install WinFsp
         run: |
-          # Download and install WinFsp silently
+          # Download and install WinFsp with all features (including SDK headers)
           $url = "https://github.com/winfsp/winfsp/releases/download/v2.0/winfsp-2.0.23075.msi"
           $output = "$env:TEMP\winfsp.msi"
           Invoke-WebRequest -Uri $url -OutFile $output
-          Start-Process msiexec.exe -ArgumentList "/i", $output, "/quiet", "/norestart" -Wait
+          # ADDLOCAL=ALL ensures SDK/development headers are installed
+          Start-Process msiexec.exe -ArgumentList "/i", $output, "/quiet", "/norestart", "ADDLOCAL=ALL" -Wait
+          # Verify installation
+          if (Test-Path "C:\Program Files (x86)\WinFsp\inc\winfsp\winfsp.h") {
+            Write-Host "WinFsp SDK headers found"
+          } else {
+            Write-Host "WinFsp SDK headers NOT found - listing directory"
+            Get-ChildItem "C:\Program Files (x86)\WinFsp" -Recurse -ErrorAction SilentlyContinue
+            exit 1
+          }
         shell: pwsh
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
+        env:
+          WINFSP_INC_DIR: "C:\\Program Files (x86)\\WinFsp\\inc"
+          WINFSP_LIB_DIR: "C:\\Program Files (x86)\\WinFsp\\lib"
 
       - name: Run tests
         run: pytest tests/ -v --tb=short
