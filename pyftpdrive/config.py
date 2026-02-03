@@ -11,6 +11,7 @@ class FTPConfig:
     password: str | None = None
     passive_mode: bool = True
     encoding: str = "utf-8"
+    secure: bool = False  # FTPS (FTP over TLS)
 
 
 @dataclass
@@ -74,6 +75,7 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
         "password": None,
         "passive_mode": True,
         "encoding": "utf-8",
+        "secure": False,
     }
     mount_config = {
         "drive_letter": None,
@@ -124,6 +126,12 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
                 )
             if ftp_section.get("encoding"):
                 ftp_config["encoding"] = ftp_section.get("encoding")
+            if ftp_section.get("secure"):
+                ftp_config["secure"] = ftp_section.get("secure", "false").lower() in (
+                    "true",
+                    "1",
+                    "yes",
+                )
 
         # Load [mount] section
         if parser.has_section("mount"):
@@ -192,6 +200,8 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
         ftp_config["password"] = cli_args["password"] or None
     if cli_args.get("drive_letter") is not None:
         mount_config["drive_letter"] = cli_args["drive_letter"]
+    if cli_args.get("secure") is not None:
+        ftp_config["secure"] = cli_args["secure"]
     if cli_args.get("debug"):
         log_config["level"] = "DEBUG"
         log_config["console"] = True
@@ -223,6 +233,7 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
             password=ftp_config["password"],
             passive_mode=ftp_config["passive_mode"],
             encoding=ftp_config["encoding"],
+            secure=ftp_config["secure"],
         ),
         mount=MountConfig(
             drive_letter=mount_config["drive_letter"],

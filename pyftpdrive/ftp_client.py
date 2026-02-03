@@ -51,12 +51,20 @@ class FTPClient:
     def _connect_internal(self) -> None:
         """Internal connect without lock - caller must hold lock."""
         try:
-            # Create FTP instance with timeout
-            self._ftp = ftplib.FTP()
+            # Create FTP instance with timeout - use FTP_TLS for secure connections
+            if self.ftp_config.secure:
+                self._ftp = ftplib.FTP_TLS()
+                logger.debug("Using FTPS (FTP over TLS)")
+            else:
+                self._ftp = ftplib.FTP()
+
             self._ftp.encoding = self.ftp_config.encoding
 
             logger.debug(
-                "Connecting to FTP server %s:%d", self.ftp_config.host, self.ftp_config.port
+                "Connecting to %s server %s:%d",
+                "FTPS" if self.ftp_config.secure else "FTP",
+                self.ftp_config.host,
+                self.ftp_config.port,
             )
 
             # Connect with timeout
@@ -75,6 +83,11 @@ class FTPClient:
             else:
                 logger.debug("Logging in anonymously")
                 self._ftp.login()
+
+            # For FTPS, switch to secure data connection after login
+            if self.ftp_config.secure:
+                self._ftp.prot_p()  # Enable data channel encryption
+                logger.debug("FTPS data channel encryption enabled")
 
             # Set passive mode
             self._ftp.set_pasv(self.ftp_config.passive_mode)

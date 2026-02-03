@@ -48,6 +48,7 @@ Examples:
     mount_parser.add_argument("--user", help="FTP Username")
     mount_parser.add_argument("--password", help="FTP Password")
     mount_parser.add_argument("--drive", help="Drive letter to mount (e.g. Z)")
+    mount_parser.add_argument("--secure", action="store_true", help="Use FTPS (FTP over TLS)")
     mount_parser.add_argument("--verbose", action="store_true", help="Enable debug logging")
 
     # Unmount command
@@ -79,6 +80,7 @@ def cmd_mount(args):
             username=args.user,
             password=args.password,
             drive_letter=args.drive,
+            secure=args.secure,
             debug=args.verbose,
         )
 
@@ -166,8 +168,11 @@ def cmd_mount(args):
             return 1
 
         logger.info("Mount successful at %s", mountpoint)
-        print(f"[OK] FTP server mounted at {mountpoint}")
+        protocol = "FTPS" if config.ftp.secure else "FTP"
+        print(f"[OK] {protocol} server mounted at {mountpoint}")
         print(f"     Host: {config.ftp.host}:{config.ftp.port}")
+        if config.ftp.secure:
+            print("     Mode: Secure (TLS)")
         print("     Press Ctrl+C to stop.")
 
         # 8. Keep alive - block until interrupted
