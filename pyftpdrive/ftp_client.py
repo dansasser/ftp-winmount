@@ -582,20 +582,31 @@ class FTPClient:
         def _read_file_internal() -> bytes:
             buffer = BytesIO()
 
+            # Track whether REST actually succeeded for this request
+            rest_used = False
+
             # Try to use REST for offset
             if offset > 0 and self._supports_rest:
                 try:
-                    self._ftp.sendcmd(f"REST {offset}")
-                except ftplib.error_perm:
-                    # REST not actually supported, download all
-                    pass
+                    resp = self._ftp.sendcmd(f"REST {offset}")
+                    # REST success is indicated by 350 response code
+                    rest_used = resp.startswith("350")
+                    if not rest_used:
+                        # Server responded but not with 350 - REST not really supported
+                        logger.debug("REST command returned non-350 response: %s", resp)
+                        self._supports_rest = False
+                except (ftplib.error_temp, ftplib.error_perm) as e:
+                    # REST not actually supported (4xx or 5xx error)
+                    logger.debug("REST command failed: %s", e)
+                    self._supports_rest = False
+                    rest_used = False
 
             # Download file
             self._ftp.retrbinary(f"RETR {path}", buffer.write)
             data = buffer.getvalue()
 
-            # Apply offset/length if REST wasn't used or for length
-            if offset > 0 and not self._supports_rest:
+            # Apply offset if REST wasn't used for this request
+            if offset > 0 and not rest_used:
                 data = data[offset:]
 
             if length is not None:

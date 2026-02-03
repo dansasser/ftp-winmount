@@ -31,7 +31,7 @@ classifiers = [
     "Topic :: System :: Filesystems",
 ]
 dependencies = [
-    "winfspy>=0.8.0",
+    "winfspy>=0.8.0; platform_system == 'Windows'",
     "cachetools>=5.0.0",
 ]
 
@@ -108,5 +108,5 @@ branch = true
 exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
-    "if __name__ == .__main__.:",
+    'if __name__ == "__main__":',
 ]

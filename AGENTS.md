@@ -8,7 +8,7 @@ Your task is to implement the logic within the provided skeletons.
 ## Prerequisites
 1.  **Environment:** Windows 10/11.
 2.  **Dependencies:**
-    - Install WinFsp: <https://winfspy.scille.fr/> (or generic WinFsp installer).
+    - Install WinFsp: <https://winfsp.dev/rel/> (or generic WinFsp installer).
     - Install Python dependencies: `pip install -e .[dev]`.
 
 ## Implementation Guide

@@ -22,6 +22,14 @@ try:
     from winfspy.plumbing import SecurityDescriptor
     from winfspy.plumbing.win32_filetime import filetime_now
 
+    # Try to import NTStatusIOTimeout, fall back to custom exception if not available
+    try:
+        from winfspy import NTStatusIOTimeout
+    except ImportError:
+        class NTStatusIOTimeout(Exception):
+            """IO timeout status - fallback when winfspy doesn't export it."""
+            pass
+
     FILE_ATTRIBUTE_DIRECTORY = FILE_ATTRIBUTE.FILE_ATTRIBUTE_DIRECTORY
     FILE_ATTRIBUTE_NORMAL = FILE_ATTRIBUTE.FILE_ATTRIBUTE_NORMAL
     _DEFAULT_SD = SecurityDescriptor.from_string("O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;WD)")
@@ -58,6 +66,10 @@ except ImportError:
         pass
 
     class NTStatusDirectoryNotEmpty(Exception):
+        pass
+
+    class NTStatusIOTimeout(Exception):
+        """IO timeout status - fallback when winfspy not available."""
         pass
 
 
@@ -186,6 +198,10 @@ class FTPFileSystem(BaseFileSystemOperations):
 
         cached = self.meta_cache.get(ftp_path)
         if cached is not None:
+            if _DEFAULT_SD is None:
+                # Fallback when winfspy not available: return placeholder values
+                # Security descriptor handle=0 (null), size=20 (min valid SD size)
+                return (cached["attributes"], 0, 20)
             return (cached["attributes"], _DEFAULT_SD.handle, _DEFAULT_SD.size)
 
         try:
@@ -201,6 +217,10 @@ class FTPFileSystem(BaseFileSystemOperations):
                     "is_dir": stats.is_dir,
                 },
             )
+            if _DEFAULT_SD is None:
+                # Fallback when winfspy not available: return placeholder values
+                # Security descriptor handle=0 (null), size=20 (min valid SD size)
+                return (attributes, 0, 20)
             return (attributes, _DEFAULT_SD.handle, _DEFAULT_SD.size)
 
         except FileNotFoundError:
@@ -208,7 +228,7 @@ class FTPFileSystem(BaseFileSystemOperations):
         except PermissionError:
             raise NTStatusAccessDenied()
         except TimeoutError:
-            raise NTStatusObjectNameNotFound()
+            raise NTStatusIOTimeout()
 
     @operation
     def open(self, file_name: str, create_options: int, granted_access: int) -> OpenedContext:
@@ -255,7 +275,7 @@ class FTPFileSystem(BaseFileSystemOperations):
         except PermissionError:
             raise NTStatusAccessDenied()
         except TimeoutError:
-            raise NTStatusObjectNameNotFound()
+            raise NTStatusIOTimeout()
 
     @operation
     def close(self, file_context: OpenedContext) -> None:
@@ -278,7 +298,7 @@ class FTPFileSystem(BaseFileSystemOperations):
         except PermissionError:
             raise NTStatusAccessDenied()
         except TimeoutError:
-            raise NTStatusEndOfFile()
+            raise NTStatusIOTimeout()
 
     @operation
     def read_directory(
@@ -354,6 +374,10 @@ class FTPFileSystem(BaseFileSystemOperations):
         Returns a default security descriptor since FTP doesn't support
         Windows ACLs. This allows all users full access.
         """
+        if _DEFAULT_SD is None:
+            # Fallback when winfspy not available: return placeholder values
+            # Security descriptor handle=0 (null), size=20 (min valid SD size)
+            return (0, 20)
         return (_DEFAULT_SD.handle, _DEFAULT_SD.size)
 
     @operation
@@ -451,7 +475,7 @@ class FTPFileSystem(BaseFileSystemOperations):
                 try:
                     content = self.ftp.read_file(file_context.path)
                     file_context.buffer = BytesIO(content)
-                except Exception:
+                except FileNotFoundError:
                     file_context.buffer = BytesIO()
             else:
                 file_context.buffer = BytesIO()

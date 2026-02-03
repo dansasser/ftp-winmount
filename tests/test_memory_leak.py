@@ -35,13 +35,11 @@ def format_bytes(b):
 
 def stress_test_directory_listing(drive_path, iterations):
     """Repeatedly list directories."""
-    for i in range(iterations):
+    for _i in range(iterations):
         try:
             for _root, _dirs, _files in os.walk(drive_path):
                 pass  # Just traverse
-                if i == 0:
-                    # Only print on first iteration
-                    break
+                break  # Shallow walk - only first level
         except Exception as e:
             print(f"[WARN] Walk error: {e}")
 

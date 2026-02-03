@@ -4,11 +4,11 @@ setup(
     name="pyftpdrive",
     version="0.1.0",
     description="Mount FTP server as a local Windows drive",
-    author="Your Name",
+    author="Daniel T Sasser II",
     packages=find_packages(),
     install_requires=[
-        "winfspy",
-        "cachetools",
+        "winfspy>=0.8.0",
+        "cachetools>=5.0.0",
     ],
     entry_points={
         "console_scripts": [

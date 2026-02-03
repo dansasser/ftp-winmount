@@ -80,7 +80,7 @@ def cmd_mount(args):
             username=args.user,
             password=args.password,
             drive_letter=args.drive,
-            secure=args.secure,
+            secure=args.secure if args.secure else None,
             debug=args.verbose,
         )
 

@@ -77,24 +77,50 @@ procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   Path: string;
   AppPath: string;
-  P: Integer;
+  Parts: TArrayOfString;
+  I, J, PartCount: Integer;
+  NewPath: string;
+  Current: string;
 begin
   if CurUninstallStep = usPostUninstall then
   begin
-    // Remove from PATH on uninstall
     AppPath := ExpandConstant('{app}');
     if RegQueryStringValue(HKEY_LOCAL_MACHINE,
       'SYSTEM\CurrentControlSet\Control\Session Manager\Environment',
       'Path', Path) then
     begin
-      P := Pos(';' + AppPath, Path);
-      if P > 0 then
+      // Split by semicolon
+      PartCount := 0;
+      I := 1;
+      while I <= Length(Path) do
       begin
-        Delete(Path, P, Length(';' + AppPath));
-        RegWriteStringValue(HKEY_LOCAL_MACHINE,
-          'SYSTEM\CurrentControlSet\Control\Session Manager\Environment',
-          'Path', Path);
+        J := I;
+        while (J <= Length(Path)) and (Path[J] <> ';') do
+          J := J + 1;
+        SetArrayLength(Parts, PartCount + 1);
+        Parts[PartCount] := Copy(Path, I, J - I);
+        PartCount := PartCount + 1;
+        I := J + 1;
       end;
+
+      // Rebuild without AppPath
+      NewPath := '';
+      for I := 0 to PartCount - 1 do
+      begin
+        Current := Parts[I];
+        if CompareText(Current, AppPath) <> 0 then
+        begin
+          if NewPath = '' then
+            NewPath := Current
+          else
+            NewPath := NewPath + ';' + Current;
+        end;
+      end;
+
+      // Write back preserving REG_EXPAND_SZ
+      RegWriteExpandStringValue(HKEY_LOCAL_MACHINE,
+        'SYSTEM\CurrentControlSet\Control\Session Manager\Environment',
+        'Path', NewPath);
     end;
   end;
 end;
