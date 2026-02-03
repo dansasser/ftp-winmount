@@ -103,8 +103,8 @@ Create `config.ini`:
 [ftp]
 host = 192.168.0.130
 port = 2121
-username = 
-password = 
+username =
+password =
 
 [mount]
 drive_letter = Z
