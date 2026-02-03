@@ -431,6 +431,67 @@ class FTPFileSystem(BaseFileSystemOperations):
             file_context.dirty = True
 
     @operation
+    def set_file_size(
+        self,
+        file_context: OpenedContext,
+        new_size: int,
+        set_allocation_size: bool,
+    ) -> None:
+        """Set the file size (truncate or extend)."""
+        logger.debug(
+            "set_file_size: %s to %d (allocation=%s)",
+            file_context.path,
+            new_size,
+            set_allocation_size,
+        )
+
+        # Ensure we have a buffer
+        if file_context.buffer is None:
+            if file_context.file_size > 0:
+                try:
+                    content = self.ftp.read_file(file_context.path)
+                    file_context.buffer = BytesIO(content)
+                except Exception:
+                    file_context.buffer = BytesIO()
+            else:
+                file_context.buffer = BytesIO()
+
+        # Truncate or extend the buffer
+        file_context.buffer.seek(0)
+        current_content = file_context.buffer.read()
+
+        if new_size < len(current_content):
+            # Truncate
+            file_context.buffer = BytesIO(current_content[:new_size])
+        elif new_size > len(current_content):
+            # Extend with zeros
+            file_context.buffer = BytesIO(current_content + b"\x00" * (new_size - len(current_content)))
+        # else: same size, no change needed
+
+        file_context.file_size = new_size
+        file_context.dirty = True
+
+    @operation
+    def overwrite(
+        self,
+        file_context: OpenedContext,
+        file_attributes: int,
+        replace_file_attributes: bool,
+        allocation_size: int,
+    ) -> None:
+        """Overwrite an existing file (truncate to zero and prepare for writing)."""
+        logger.debug("overwrite: %s", file_context.path)
+
+        # Reset buffer to empty
+        file_context.buffer = BytesIO()
+        file_context.file_size = 0
+        file_context.dirty = True
+
+        # Update attributes if requested
+        if replace_file_attributes:
+            file_context.attributes = file_attributes
+
+    @operation
     def create(
         self,
         file_name: str,
