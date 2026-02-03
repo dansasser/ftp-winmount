@@ -787,9 +787,7 @@ class TestRename:
 class TestClose:
     """Tests for close method."""
 
-    def test_close_is_noop(
-        self, filesystem: FTPFileSystem, mock_ftp_client: MagicMock
-    ):
+    def test_close_is_noop(self, filesystem: FTPFileSystem, mock_ftp_client: MagicMock):
         """Test that close is a no-op (winfspy handles cleanup via cleanup method)."""
         context = FileContext(
             path="/file.txt",
