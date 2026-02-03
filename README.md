@@ -1,8 +1,39 @@
-# README.md
+# PyFTPDrive
 
-## PyFTPDrive
+[![PyPI version](https://badge.fury.io/py/pyftpdrive.svg)](https://badge.fury.io/py/pyftpdrive)
+[![CI](https://github.com/dansasser/ftp-winmount/actions/workflows/ci.yml/badge.svg)](https://github.com/dansasser/ftp-winmount/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Windows](https://img.shields.io/badge/platform-Windows-blue.svg)](https://www.microsoft.com/windows)
 
 Mount any FTP server as a local Windows drive. No sync, no ads, no telemetry.
+
+---
+
+## Download
+
+**No Python required.** Download from [GitHub Releases](https://github.com/dansasser/ftp-winmount/releases/latest).
+
+### Installer (Recommended)
+
+1. Install [WinFsp](https://winfsp.dev/rel/) (required dependency)
+2. Download `pyftpdrive-X.X.X-setup.exe`
+3. Run the installer (installs to Program Files and adds to PATH)
+4. Open any terminal and run:
+   ```bash
+   pyftpdrive mount --host 192.168.0.130 --port 2121 --drive Z
+   ```
+
+### Portable
+
+If you don't want to install:
+
+1. Install [WinFsp](https://winfsp.dev/rel/) (required dependency)
+2. Download `pyftpdrive-X.X.X-portable.exe`
+3. Run from wherever you saved it:
+   ```bash
+   C:\Downloads\pyftpdrive-0.1.0-portable.exe mount --host 192.168.0.130 --port 2121 --drive Z
+   ```
 
 ---
 
@@ -29,29 +60,97 @@ Mount any FTP server as a local Windows drive. No sync, no ads, no telemetry.
 
 ## Requirements
 
-- Windows 10 or 11
-- Python 3.10+
-- [WinFsp](https://winfsp.dev/) (free, open source)
+### Windows Dependencies
+
+PyFTPDrive requires **WinFsp** (Windows File System Proxy) - a free, open-source file system driver that enables user-mode filesystems on Windows.
+
+| Dependency | Version | Required | Download |
+|------------|---------|----------|----------|
+| Windows | 10 or 11 | Yes | - |
+| Python | 3.10+ | Yes | [python.org](https://www.python.org/downloads/) |
+| WinFsp | 2.0+ | Yes | [winfsp.dev/rel](https://winfsp.dev/rel/) |
+
+### Installing WinFsp
+
+**Option 1: Download installer (Recommended)**
+1. Go to https://winfsp.dev/rel/
+2. Download the latest `.msi` installer
+3. Run the installer (requires admin rights)
+4. Restart any open terminals
+
+**Option 2: Winget**
+```powershell
+winget install WinFsp.WinFsp
+```
+
+**Option 3: Chocolatey**
+```powershell
+choco install winfsp
+```
+
+**Verify Installation:**
+```powershell
+# Check WinFsp is installed
+dir "C:\Program Files (x86)\WinFsp"
+```
 
 ---
 
 ## Installation
 
-### 1. Install WinFsp
+### Installer (Easiest)
 
-Download and install from https://winfsp.dev/rel/
+See [Download](#download) section above. No Python required. Installs to Program Files and adds to PATH.
 
-### 2. Install PyFTPDrive
+### From PyPI
+
 ```bash
 pip install pyftpdrive
 ```
 
-Or from source:
+This installs `pyftpdrive` to your Python Scripts folder. Make sure that folder is in your PATH.
+
+**Note:** If you install inside a virtual environment, the command will only work when that venv is activated.
+
+### From Source
+
 ```bash
-git clone https://github.com/yourusername/pyftpdrive.git
-cd pyftpdrive
-pip install -e .
+git clone https://github.com/dansasser/ftp-winmount.git
+cd ftp-winmount
+pip install .
 ```
+
+### Development Install
+
+```bash
+git clone https://github.com/dansasser/ftp-winmount.git
+cd ftp-winmount
+pip install -e ".[dev]"
+```
+
+### Building Standalone Executable
+
+To build `pyftpdrive.exe` yourself:
+
+```bash
+git clone https://github.com/dansasser/ftp-winmount.git
+cd ftp-winmount
+pip install -e ".[dev]"
+python build_exe.py
+```
+
+The executable will be at `dist/pyftpdrive.exe`.
+
+### Building Installer
+
+To build the Windows installer (requires [Inno Setup](https://jrsoftware.org/isinfo.php)):
+
+```bash
+python build_exe.py
+iscc installer.iss
+```
+
+The installer will be at `dist/pyftpdrive-X.X.X-setup.exe`.
 
 ---
 
@@ -62,7 +161,7 @@ Mount an anonymous FTP server:
 pyftpdrive mount --host 192.168.0.130 --port 2121 --drive Z
 ```
 
-Your FTP server is now accessible at `Z:\\`
+Your FTP server is now accessible at `Z:\`
 
 To unmount:
 ```bash
@@ -103,8 +202,8 @@ Create `config.ini`:
 [ftp]
 host = 192.168.0.130
 port = 2121
-username = 
-password = 
+username =
+password =
 
 [mount]
 drive_letter = Z
@@ -134,7 +233,7 @@ pyftpdrive mount --config config.ini
 
 2. Open VS Code
 
-3. File → Open Folder → Select `Z:\\`
+3. File -> Open Folder -> Select `Z:\`
 
 4. Edit files normally. Changes save directly to the FTP server.
 
@@ -174,9 +273,14 @@ pyftpdrive mount --host SERVER_IP --port 2121 --drive Z
 
 ## Troubleshooting
 
-### "WinFsp not found"
+### "WinFsp not found" or "winfspy not available"
 
-Install WinFsp from https://winfsp.dev/rel/
+WinFsp must be installed system-wide. The Python package `winfspy` is just bindings.
+
+1. Download WinFsp from https://winfsp.dev/rel/
+2. Run the installer as administrator
+3. Restart your terminal
+4. Try again
 
 ### "Drive letter in use"
 
@@ -207,24 +311,53 @@ net use Z: /delete
 - Increase `directory_ttl_seconds`
 - Check network connection to FTP server
 
+### Mount crashes or hangs
+
+- Update to the latest version of WinFsp
+- Check Windows Event Viewer for errors
+- Run with `--verbose` flag for detailed logs
+
 ---
 
 ## Limitations
 
+- **Windows only** - This tool uses WinFsp which is Windows-specific
 - FTP protocol does not support file locking. Concurrent writes from multiple clients may cause issues.
 - Some FTP servers don't report accurate file sizes or timestamps.
 - Very large files (>1GB) may be slow due to FTP protocol limitations.
 
 ---
 
-## Building from Source
+## Development
+
+### Setup
+
 ```bash
-git clone https://github.com/yourusername/pyftpdrive.git
-cd pyftpdrive
+git clone https://github.com/dansasser/ftp-winmount.git
+cd ftp-winmount
 python -m venv venv
-venv\\Scripts\\activate
+venv\Scripts\activate
 pip install -e ".[dev]"
+```
+
+### Run Tests
+
+```bash
 pytest
+```
+
+### Linting
+
+```bash
+ruff check pyftpdrive tests
+ruff format pyftpdrive tests
+```
+
+### Build Package
+
+```bash
+python -m build
+twine check dist/*
 ```
 
 ---
@@ -233,11 +366,17 @@ pytest
 
 Contributions welcome. Please open an issue first to discuss major changes.
 
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
 ---
 
 ## License
 
-MIT License. See LICENSE file.
+MIT License. See [LICENSE](LICENSE) file.
 
 ---
 
@@ -245,3 +384,11 @@ MIT License. See LICENSE file.
 
 - [WinFsp](https://winfsp.dev/) - Windows File System Proxy
 - [winfspy](https://github.com/Scille/winfspy) - Python bindings for WinFsp
+
+---
+
+## Related Projects
+
+- [WinFsp](https://winfsp.dev/) - The underlying filesystem driver
+- [SSHFS-Win](https://github.com/winfsp/sshfs-win) - Mount SSH/SFTP as drives (uses WinFsp)
+- [rclone](https://rclone.org/) - Mount cloud storage (supports many providers)
