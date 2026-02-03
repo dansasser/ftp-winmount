@@ -10,6 +10,33 @@ Mount any FTP server as a local Windows drive. No sync, no ads, no telemetry.
 
 ---
 
+## Download
+
+**No Python required.** Download from [GitHub Releases](https://github.com/dansasser/ftp-winmount/releases/latest).
+
+### Installer (Recommended)
+
+1. Install [WinFsp](https://winfsp.dev/rel/) (required dependency)
+2. Download `pyftpdrive-X.X.X-setup.exe`
+3. Run the installer (installs to Program Files and adds to PATH)
+4. Open any terminal and run:
+   ```bash
+   pyftpdrive mount --host 192.168.0.130 --port 2121 --drive Z
+   ```
+
+### Portable
+
+If you don't want to install:
+
+1. Install [WinFsp](https://winfsp.dev/rel/) (required dependency)
+2. Download `pyftpdrive-X.X.X-portable.exe`
+3. Run from wherever you saved it:
+   ```bash
+   C:\Downloads\pyftpdrive-0.1.0-portable.exe mount --host 192.168.0.130 --port 2121 --drive Z
+   ```
+
+---
+
 ## Why?
 
 - VS Code's FTP plugins only sync files, they don't mount
@@ -71,18 +98,26 @@ dir "C:\Program Files (x86)\WinFsp"
 
 ## Installation
 
-### From PyPI (Recommended)
+### Installer (Easiest)
+
+See [Download](#download) section above. No Python required. Installs to Program Files and adds to PATH.
+
+### From PyPI
 
 ```bash
 pip install pyftpdrive
 ```
+
+This installs `pyftpdrive` to your Python Scripts folder. Make sure that folder is in your PATH.
+
+**Note:** If you install inside a virtual environment, the command will only work when that venv is activated.
 
 ### From Source
 
 ```bash
 git clone https://github.com/dansasser/ftp-winmount.git
 cd ftp-winmount
-pip install -e .
+pip install .
 ```
 
 ### Development Install
@@ -92,6 +127,30 @@ git clone https://github.com/dansasser/ftp-winmount.git
 cd ftp-winmount
 pip install -e ".[dev]"
 ```
+
+### Building Standalone Executable
+
+To build `pyftpdrive.exe` yourself:
+
+```bash
+git clone https://github.com/dansasser/ftp-winmount.git
+cd ftp-winmount
+pip install -e ".[dev]"
+python build_exe.py
+```
+
+The executable will be at `dist/pyftpdrive.exe`.
+
+### Building Installer
+
+To build the Windows installer (requires [Inno Setup](https://jrsoftware.org/isinfo.php)):
+
+```bash
+python build_exe.py
+iscc installer.iss
+```
+
+The installer will be at `dist/pyftpdrive-X.X.X-setup.exe`.
 
 ---
 
