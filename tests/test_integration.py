@@ -620,10 +620,8 @@ class TestCacheBehavior:
 
     def test_directory_listing_is_cached(self, integration_filesystem: FTPFileSystem) -> None:
         """Test that directory listing is cached."""
-        # First call populates cache
-        from pyftpdrive.filesystem import FileContext
-
-        ctx = FileContext(path="/", is_directory=True)
+        # First call populates cache - use open() which returns a properly constructed context
+        ctx = integration_filesystem.open("\\", 0, 0)
         integration_filesystem.read_directory(ctx, None)
 
         # Second call should use cache (verify by checking cache)
@@ -640,10 +638,8 @@ class TestCacheBehavior:
         test_path = "/test_cache_invalidate.txt"
 
         try:
-            # List root directory to populate cache
-            from pyftpdrive.filesystem import FileContext
-
-            ctx = FileContext(path="/", is_directory=True)
+            # List root directory to populate cache - use open() for properly constructed context
+            ctx = integration_filesystem.open("\\", 0, 0)
             integration_filesystem.read_directory(ctx, None)
 
             # Verify cache is populated
@@ -766,7 +762,7 @@ class TestFilesystemIntegration:
         ctx = integration_filesystem.open("\\", 0, 0)
         entries = integration_filesystem.read_directory(ctx, None)
 
-        names = {name for name, _ in entries}
+        names = {entry["file_name"] for entry in entries}
         assert "test.txt" in names
         assert "folder with spaces" in names
 
@@ -779,7 +775,7 @@ class TestFilesystemIntegration:
         assert len(all_entries) > 1
 
         # Use first entry name as marker
-        first_name = all_entries[0][0]
+        first_name = all_entries[0]["file_name"]
         remaining = integration_filesystem.read_directory(ctx, first_name)
 
         # Should have one fewer entry (marker entry is skipped)
@@ -917,12 +913,12 @@ class TestFilesystemWriteOperations:
             except FileNotFoundError:
                 pass
 
-    def test_close_flushes_dirty_buffer(
+    def test_cleanup_flushes_dirty_buffer(
         self,
         integration_filesystem: FTPFileSystem,
         ftp_server: dict[str, Any],
     ) -> None:
-        """Test that close() flushes dirty buffer."""
+        """Test that cleanup() flushes dirty buffer (close is a no-op in winfspy)."""
         from pyftpdrive.filesystem import FILE_ATTRIBUTE_NORMAL
 
         test_path = "\\test_fs_close_flush.txt"
@@ -943,8 +939,8 @@ class TestFilesystemWriteOperations:
             integration_filesystem.write(ctx, test_content, 0)
             assert ctx.dirty is True
 
-            # Close should flush
-            integration_filesystem.close(ctx)
+            # cleanup() should flush (close is a no-op, winfspy calls cleanup)
+            integration_filesystem.cleanup(ctx, test_path, 0)
 
             # Verify content on FTP server
             data = integration_filesystem.ftp.read_file("/test_fs_close_flush.txt")

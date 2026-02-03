@@ -25,14 +25,40 @@ from pyftpdrive.filesystem import (
     FILE_ATTRIBUTE_NORMAL,
     FILE_DIRECTORY_FILE,
     FSP_CLEANUP_DELETE,
-    FileContext,
     FTPFileSystem,
     NTStatusAccessDenied,
     NTStatusDirectoryNotEmpty,
     NTStatusObjectNameCollision,
     NTStatusObjectNameNotFound,
+    OpenedContext,
 )
 from pyftpdrive.ftp_client import FileStats
+
+
+def FileContext(
+    path: str,
+    is_directory: bool = False,
+    file_size: int = 0,
+    attributes: int | None = None,
+    mtime_filetime: int = 0,
+    **kwargs,  # Accept and ignore extra kwargs for backwards compat
+) -> OpenedContext:
+    """Helper to create OpenedContext for tests with sensible defaults."""
+    if attributes is None:
+        attributes = FILE_ATTRIBUTE_DIRECTORY if is_directory else FILE_ATTRIBUTE_NORMAL
+    ctx = OpenedContext(
+        path=path,
+        is_directory=is_directory,
+        file_size=file_size,
+        attributes=attributes,
+        mtime_filetime=mtime_filetime,
+    )
+    # Allow setting buffer/dirty after creation via kwargs
+    if "buffer" in kwargs:
+        ctx.buffer = kwargs["buffer"]
+    if "dirty" in kwargs:
+        ctx.dirty = kwargs["dirty"]
+    return ctx
 
 
 @pytest.fixture
@@ -92,7 +118,8 @@ class TestGetSecurityByName:
         attrs, security, size = filesystem.get_security_by_name("\\file.txt")
 
         assert attrs == FILE_ATTRIBUTE_NORMAL
-        assert size == 1024
+        # size is the security descriptor size, not file size
+        assert size > 0
 
     def test_returns_attributes_for_directory(
         self, filesystem: FTPFileSystem, mock_ftp_client: MagicMock
@@ -108,7 +135,8 @@ class TestGetSecurityByName:
         attrs, security, size = filesystem.get_security_by_name("\\folder")
 
         assert attrs == FILE_ATTRIBUTE_DIRECTORY
-        assert size == 0
+        # size is the security descriptor size, not file size
+        assert size > 0
 
     def test_raises_not_found_for_missing_file(
         self, filesystem: FTPFileSystem, mock_ftp_client: MagicMock
@@ -146,10 +174,10 @@ class TestGetSecurityByName:
         # FTP should only be called once
         assert mock_ftp_client.get_file_info.call_count == 1
 
-    def test_security_descriptor_is_none(
+    def test_security_descriptor_is_provided(
         self, filesystem: FTPFileSystem, mock_ftp_client: MagicMock
     ):
-        """Test that security descriptor is None (default permissions)."""
+        """Test that security descriptor handle is returned."""
         mock_ftp_client.get_file_info.return_value = FileStats(
             name="file.txt",
             size=1024,
@@ -159,7 +187,8 @@ class TestGetSecurityByName:
 
         attrs, security, size = filesystem.get_security_by_name("\\file.txt")
 
-        assert security is None
+        # Security descriptor handle is returned (not None)
+        assert security is not None
 
 
 class TestOpen:
@@ -176,7 +205,7 @@ class TestOpen:
 
         context = filesystem.open("\\file.txt", 0, 0)
 
-        assert isinstance(context, FileContext)
+        assert isinstance(context, OpenedContext)
         assert context.path == "/file.txt"
         assert context.is_directory is False
         assert context.file_size == 1024
@@ -292,8 +321,8 @@ class TestReadDirectory:
         result = filesystem.read_directory(context, None)
 
         assert len(result) == 2
-        assert result[0][0] == "file1.txt"
-        assert result[1][0] == "folder1"
+        assert result[0]["file_name"] == "file1.txt"
+        assert result[1]["file_name"] == "folder1"
 
     def test_read_directory_uses_cache(self, filesystem: FTPFileSystem, mock_ftp_client: MagicMock):
         """Test that read_directory uses directory cache."""
@@ -325,8 +354,8 @@ class TestReadDirectory:
 
         # Should only return entries after marker
         assert len(result) == 2
-        assert result[0][0] == "b.txt"
-        assert result[1][0] == "c.txt"
+        assert result[0]["file_name"] == "b.txt"
+        assert result[1]["file_name"] == "c.txt"
 
     def test_read_directory_entry_format(
         self, filesystem: FTPFileSystem, mock_ftp_client: MagicMock
@@ -336,14 +365,15 @@ class TestReadDirectory:
 
         result = filesystem.read_directory(context, None)
 
-        name, file_info = result[0]
+        entry = result[0]
 
-        assert "file_size" in file_info
-        assert "allocation_size" in file_info
-        assert "creation_time" in file_info
-        assert "last_access_time" in file_info
-        assert "last_write_time" in file_info
-        assert "file_attributes" in file_info
+        assert "file_name" in entry
+        assert "file_size" in entry
+        assert "allocation_size" in entry
+        assert "creation_time" in entry
+        assert "last_access_time" in entry
+        assert "last_write_time" in entry
+        assert "file_attributes" in entry
 
 
 class TestCreate:
@@ -590,7 +620,7 @@ class TestCleanup:
             file_size=100,
         )
 
-        filesystem.cleanup(context, FSP_CLEANUP_DELETE)
+        filesystem.cleanup(context, "\\file.txt", FSP_CLEANUP_DELETE)
 
         mock_ftp_client.delete_file.assert_called_once_with("/file.txt")
 
@@ -604,7 +634,7 @@ class TestCleanup:
             file_size=0,
         )
 
-        filesystem.cleanup(context, FSP_CLEANUP_DELETE)
+        filesystem.cleanup(context, "\\folder", FSP_CLEANUP_DELETE)
 
         mock_ftp_client.delete_dir.assert_called_once_with("/folder")
 
@@ -618,7 +648,7 @@ class TestCleanup:
             file_size=100,
         )
 
-        filesystem.cleanup(context, 0)
+        filesystem.cleanup(context, "\\file.txt", 0)
 
         mock_ftp_client.delete_file.assert_not_called()
         mock_ftp_client.delete_dir.assert_not_called()
@@ -637,7 +667,7 @@ class TestCleanup:
             file_size=100,
         )
 
-        filesystem.cleanup(context, FSP_CLEANUP_DELETE)
+        filesystem.cleanup(context, "\\file.txt", FSP_CLEANUP_DELETE)
 
         # Caches should be invalidated
         assert filesystem.meta_cache.get("/file.txt") is None
@@ -656,7 +686,7 @@ class TestCleanup:
         )
 
         # Should not raise
-        filesystem.cleanup(context, FSP_CLEANUP_DELETE)
+        filesystem.cleanup(context, "\\file.txt", FSP_CLEANUP_DELETE)
 
     def test_cleanup_raises_not_empty_for_directory(
         self, filesystem: FTPFileSystem, mock_ftp_client: MagicMock
@@ -671,7 +701,7 @@ class TestCleanup:
         )
 
         with pytest.raises(NTStatusDirectoryNotEmpty):
-            filesystem.cleanup(context, FSP_CLEANUP_DELETE)
+            filesystem.cleanup(context, "\\folder", FSP_CLEANUP_DELETE)
 
 
 class TestRename:
@@ -757,10 +787,10 @@ class TestRename:
 class TestClose:
     """Tests for close method."""
 
-    def test_close_flushes_dirty_buffer(
+    def test_close_is_noop(
         self, filesystem: FTPFileSystem, mock_ftp_client: MagicMock
     ):
-        """Test that close flushes dirty buffer."""
+        """Test that close is a no-op (winfspy handles cleanup via cleanup method)."""
         context = FileContext(
             path="/file.txt",
             is_directory=False,
@@ -769,25 +799,26 @@ class TestClose:
             dirty=True,
         )
 
+        # close() should not do anything - flushing happens in cleanup()
         filesystem.close(context)
 
-        mock_ftp_client.write_file.assert_called_once()
+        mock_ftp_client.write_file.assert_not_called()
 
-    def test_close_does_not_flush_clean_buffer(
+    def test_cleanup_flushes_dirty_buffer(
         self, filesystem: FTPFileSystem, mock_ftp_client: MagicMock
     ):
-        """Test that close does not flush clean buffer."""
+        """Test that cleanup flushes dirty buffer."""
         context = FileContext(
             path="/file.txt",
             is_directory=False,
             file_size=9,
             buffer=BytesIO(b"test data"),
-            dirty=False,
+            dirty=True,
         )
 
-        filesystem.close(context)
+        filesystem.cleanup(context, "\\file.txt", 0)
 
-        mock_ftp_client.write_file.assert_not_called()
+        mock_ftp_client.write_file.assert_called_once()
 
 
 class TestGetFileInfo:
@@ -795,24 +826,23 @@ class TestGetFileInfo:
 
     def test_get_file_info_returns_context_data(self, filesystem: FTPFileSystem):
         """Test that get_file_info returns data from context."""
-        now = datetime(2024, 1, 15, 10, 30, 0)
+        # Times are FILETIME integers (100-nanosecond intervals since 1601)
+        mtime_filetime = 133500000000000000  # Some arbitrary FILETIME value
         context = FileContext(
             path="/file.txt",
             is_directory=False,
             file_size=1024,
-            creation_time=now,
-            last_access_time=now,
-            last_write_time=now,
             attributes=FILE_ATTRIBUTE_NORMAL,
+            mtime_filetime=mtime_filetime,
         )
 
         result = filesystem.get_file_info(context)
 
         assert result["file_size"] == 1024
         assert result["allocation_size"] == 1024
-        assert result["creation_time"] == now
-        assert result["last_access_time"] == now
-        assert result["last_write_time"] == now
+        assert result["creation_time"] == mtime_filetime
+        assert result["last_access_time"] == mtime_filetime
+        assert result["last_write_time"] == mtime_filetime
         assert result["file_attributes"] == FILE_ATTRIBUTE_NORMAL
 
 
@@ -840,30 +870,36 @@ class TestSetFileInfo:
 
 
 class TestFileContext:
-    """Tests for FileContext dataclass."""
+    """Tests for FileContext/OpenedContext."""
 
     def test_file_context_defaults(self):
-        """Test FileContext default values."""
+        """Test FileContext helper provides sensible defaults."""
         context = FileContext(path="/test", is_directory=False)
 
+        assert context.path == "/test"
         assert context.file_size == 0
-        assert context.attributes == 0
+        assert context.attributes == FILE_ATTRIBUTE_NORMAL  # Default for files
         assert context.buffer is None
         assert context.dirty is False
 
+    def test_directory_context_defaults(self):
+        """Test FileContext helper defaults for directories."""
+        context = FileContext(path="/testdir", is_directory=True)
+
+        assert context.is_directory is True
+        assert context.attributes == FILE_ATTRIBUTE_DIRECTORY  # Default for dirs
+
     def test_file_context_with_all_values(self):
         """Test FileContext with all values specified."""
-        now = datetime.now()
         buffer = BytesIO()
+        mtime_filetime = 133500000000000000
 
         context = FileContext(
             path="/test",
             is_directory=True,
             file_size=1024,
-            creation_time=now,
-            last_access_time=now,
-            last_write_time=now,
             attributes=FILE_ATTRIBUTE_DIRECTORY,
+            mtime_filetime=mtime_filetime,
             buffer=buffer,
             dirty=True,
         )
@@ -871,5 +907,6 @@ class TestFileContext:
         assert context.path == "/test"
         assert context.is_directory is True
         assert context.file_size == 1024
+        assert context.creation_time == mtime_filetime
         assert context.buffer is buffer
         assert context.dirty is True
