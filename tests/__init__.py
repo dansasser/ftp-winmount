@@ -1,1 +1,0 @@
-# PyFTPDrive Test Suite

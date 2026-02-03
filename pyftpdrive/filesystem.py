@@ -1,561 +1,189 @@
-"""
-FTP Filesystem implementation for WinFsp.
-
-This module implements WinFsp filesystem callbacks that translate
-Windows file operations into FTP protocol commands.
-"""
-
-from functools import wraps
-
 try:
+    import winfspy
     from winfspy import (
-        FILE_ATTRIBUTE,
-        BaseFileSystemOperations,
         FileSystem,
-        NTStatusAccessDenied,
-        NTStatusDirectoryNotEmpty,
-        NTStatusEndOfFile,
-        NTStatusMediaWriteProtected,
-        NTStatusObjectNameCollision,
-        NTStatusObjectNameNotFound,
+        BaseFileSystemOperations,
+        FILE_ATTRIBUTE_DIRECTORY,
+        FILE_ATTRIBUTE_NORMAL,
+        STATUS_SUCCESS,
+        STATUS_OBJECT_NAME_NOT_FOUND,
+        STATUS_END_OF_FILE
     )
-    from winfspy.plumbing import SecurityDescriptor
-    from winfspy.plumbing.win32_filetime import filetime_now
-
-    FILE_ATTRIBUTE_DIRECTORY = FILE_ATTRIBUTE.FILE_ATTRIBUTE_DIRECTORY
-    FILE_ATTRIBUTE_NORMAL = FILE_ATTRIBUTE.FILE_ATTRIBUTE_NORMAL
-    _DEFAULT_SD = SecurityDescriptor.from_string("O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;WD)")
-    WINFSPY_AVAILABLE = True
 except ImportError:
-    WINFSPY_AVAILABLE = False
-
-    class FileSystem:
-        pass
-
-    class BaseFileSystemOperations:
-        pass
-
+    # Allow this file to be imported in non-Windows environments for inspection
+    class FileSystem: pass
+    class BaseFileSystemOperations: pass
+    # Define dummy constants
     FILE_ATTRIBUTE_DIRECTORY = 0x10
     FILE_ATTRIBUTE_NORMAL = 0x80
-    _DEFAULT_SD = None
+    STATUS_SUCCESS = 0
+    STATUS_OBJECT_NAME_NOT_FOUND = 0xC0000034
+    STATUS_END_OF_FILE = 0x80000011
 
-    def filetime_now():
-        return 0
-
-    class NTStatusObjectNameNotFound(Exception):
-        pass
-
-    class NTStatusAccessDenied(Exception):
-        pass
-
-    class NTStatusEndOfFile(Exception):
-        pass
-
-    class NTStatusMediaWriteProtected(Exception):
-        pass
-
-    class NTStatusObjectNameCollision(Exception):
-        pass
-
-    class NTStatusDirectoryNotEmpty(Exception):
-        pass
-
-
-import logging
-import threading
-from datetime import datetime
-from io import BytesIO
-from typing import Any
-
+from typing import Optional, List
+from .ftp_client import FTPClient
 from .cache import DirectoryCache, MetadataCache
-from .ftp_client import FileStats, FTPClient
 
-logger = logging.getLogger(__name__)
-
-# Windows CreateFile flags
-FILE_DIRECTORY_FILE = 0x00000001
-
-# WinFsp cleanup flags
-FspCleanupDelete = 0x01
-FspCleanupSetAllocationSize = 0x02
-FspCleanupSetArchiveBit = 0x10
-FspCleanupSetLastAccessTime = 0x20
-FspCleanupSetLastWriteTime = 0x40
-FspCleanupSetChangeTime = 0x80
-
-# Aliases for test compatibility
-FSP_CLEANUP_DELETE = FspCleanupDelete
-
-
-def datetime_to_filetime(dt: datetime) -> int:
-    """Convert Python datetime to Windows FILETIME integer."""
-    if dt is None:
-        return filetime_now()
-    EPOCH_DIFF = 116444736000000000
-    timestamp = dt.timestamp()
-    return int(timestamp * 10000000) + EPOCH_DIFF
-
-
-def operation(fn):
-    """Decorator for filesystem operations - provides thread safety and logging."""
-    name = fn.__name__
-
-    @wraps(fn)
-    def wrapper(self, *args, **kwargs):
-        with self._thread_lock:
-            try:
-                result = fn(self, *args, **kwargs)
-                logger.debug("%s: OK", name)
-                return result
-            except Exception as exc:
-                logger.debug("%s: FAIL - %s", name, exc)
-                raise
-
-    return wrapper
-
-
-class OpenedContext:
-    """Lightweight context for open file handles.
-
-    All times are FILETIME integers (100-nanosecond intervals since 1601).
+class FTPFileSystem(FileSystem):
     """
-
-    def __init__(
-        self, path: str, is_directory: bool, file_size: int, attributes: int, mtime_filetime: int
-    ):
-        self.path = path
-        self.is_directory = is_directory
-        self.file_size = file_size
-        self.attributes = attributes
-        self.creation_time = mtime_filetime
-        self.last_access_time = mtime_filetime
-        self.last_write_time = mtime_filetime
-        self.change_time = mtime_filetime
-        # For write buffering
-        self.buffer = None
-        self.dirty = False
-
-    def __repr__(self):
-        return f"OpenedContext({self.path!r})"
-
-
-# Alias for test compatibility
-FileContext = OpenedContext
-
-
-class FTPFileSystem(BaseFileSystemOperations):
-    """WinFsp Filesystem implementation that backs to an FTP server."""
+    WinFsp Filesystem implementation that backs to an FTP server.
+    """
 
     def __init__(self, ftp_client: FTPClient, cache_config):
         super().__init__()
-        self._thread_lock = threading.Lock()
         self.ftp = ftp_client
+        # Initialize caches based on config
         self.dir_cache = DirectoryCache(cache_config.directory_ttl_seconds)
         self.meta_cache = MetadataCache(cache_config.metadata_ttl_seconds)
-        logger.info(
-            "FTPFileSystem initialized with cache TTLs: dir=%d, meta=%d",
-            cache_config.directory_ttl_seconds,
-            cache_config.metadata_ttl_seconds,
-        )
 
-    def _to_ftp_path(self, win_path: str) -> str:
-        """Convert Windows path to FTP path."""
-        path = win_path.lstrip("\\").replace("\\", "/")
-        if not path:
-            return "/"
-        return "/" + path if not path.startswith("/") else path
-
-    def _filestats_to_attributes(self, stats: FileStats) -> int:
-        """Convert FileStats to Windows file attributes."""
-        return FILE_ATTRIBUTE_DIRECTORY if stats.is_dir else FILE_ATTRIBUTE_NORMAL
-
-    @operation
-    def get_volume_info(self) -> dict[str, Any]:
-        """Get volume information."""
-        return {
-            "total_size": 1024 * 1024 * 1024 * 1024,
-            "free_size": 500 * 1024 * 1024 * 1024,
-            "volume_label": "FTP Drive",
-        }
-
-    @operation
     def get_security_by_name(self, file_name: str):
-        """Get security descriptor for a file."""
-        ftp_path = self._to_ftp_path(file_name)
-        logger.debug("get_security_by_name: %s -> %s", file_name, ftp_path)
-
-        cached = self.meta_cache.get(ftp_path)
-        if cached is not None:
-            return (cached["attributes"], _DEFAULT_SD.handle, _DEFAULT_SD.size)
-
-        try:
-            stats = self.ftp.get_file_info(ftp_path)
-            attributes = self._filestats_to_attributes(stats)
-            mtime_filetime = datetime_to_filetime(stats.mtime)
-            self.meta_cache.put(
-                ftp_path,
-                {
-                    "file_size": stats.size,
-                    "attributes": attributes,
-                    "mtime_filetime": mtime_filetime,
-                    "is_dir": stats.is_dir,
-                },
-            )
-            return (attributes, _DEFAULT_SD.handle, _DEFAULT_SD.size)
-
-        except FileNotFoundError:
-            raise NTStatusObjectNameNotFound()
-        except PermissionError:
-            raise NTStatusAccessDenied()
-        except TimeoutError:
-            raise NTStatusObjectNameNotFound()
-
-    @operation
-    def open(self, file_name: str, create_options: int, granted_access: int) -> OpenedContext:
-        """Open a file or directory."""
-        ftp_path = self._to_ftp_path(file_name)
-        logger.debug("open: %s -> %s", file_name, ftp_path)
-
-        cached = self.meta_cache.get(ftp_path)
-        if cached is not None:
-            mtime_filetime = cached.get("mtime_filetime")
-            if mtime_filetime is None:
-                mtime_filetime = datetime_to_filetime(cached.get("mtime"))
-            return OpenedContext(
-                path=ftp_path,
-                is_directory=cached["is_dir"],
-                file_size=cached["file_size"],
-                attributes=cached["attributes"],
-                mtime_filetime=mtime_filetime,
-            )
-
-        try:
-            stats = self.ftp.get_file_info(ftp_path)
-            attributes = self._filestats_to_attributes(stats)
-            mtime_filetime = datetime_to_filetime(stats.mtime)
-            self.meta_cache.put(
-                ftp_path,
-                {
-                    "file_size": stats.size,
-                    "attributes": attributes,
-                    "mtime_filetime": mtime_filetime,
-                    "is_dir": stats.is_dir,
-                },
-            )
-            return OpenedContext(
-                path=ftp_path,
-                is_directory=stats.is_dir,
-                file_size=stats.size,
-                attributes=attributes,
-                mtime_filetime=mtime_filetime,
-            )
-
-        except FileNotFoundError:
-            raise NTStatusObjectNameNotFound()
-        except PermissionError:
-            raise NTStatusAccessDenied()
-        except TimeoutError:
-            raise NTStatusObjectNameNotFound()
-
-    @operation
-    def close(self, file_context: OpenedContext) -> None:
-        """Close file handle. winfspy handles cleanup via _opened_objs."""
-        pass
-
-    @operation
-    def read(self, file_context: OpenedContext, offset: int, length: int) -> bytes:
-        """Read data from file."""
-        if offset >= file_context.file_size:
-            return b""
-
-        remaining = file_context.file_size - offset
-        actual_length = min(length, remaining)
-
-        try:
-            return self.ftp.read_file(file_context.path, offset, actual_length)
-        except FileNotFoundError:
-            raise NTStatusObjectNameNotFound()
-        except PermissionError:
-            raise NTStatusAccessDenied()
-        except TimeoutError:
-            raise NTStatusEndOfFile()
-
-    @operation
-    def read_directory(
-        self, file_context: OpenedContext, marker: str | None
-    ) -> list[dict[str, Any]]:
-        """List directory contents."""
-        path = file_context.path
-        cached_entries = self.dir_cache.get(path)
-
-        if cached_entries is None:
-            try:
-                stats_list = self.ftp.list_dir(path)
-                cached_entries = []
-                for stats in stats_list:
-                    attributes = self._filestats_to_attributes(stats)
-                    mtime_filetime = datetime_to_filetime(stats.mtime)
-                    cached_entries.append(
-                        {
-                            "name": stats.name,
-                            "file_size": stats.size,
-                            "allocation_size": stats.size,
-                            "creation_time": mtime_filetime,
-                            "last_access_time": mtime_filetime,
-                            "last_write_time": mtime_filetime,
-                            "change_time": mtime_filetime,
-                            "file_attributes": attributes,
-                            "is_dir": stats.is_dir,
-                        }
-                    )
-                    file_path = path.rstrip("/") + "/" + stats.name
-                    self.meta_cache.put(
-                        file_path,
-                        {
-                            "file_size": stats.size,
-                            "attributes": attributes,
-                            "mtime_filetime": mtime_filetime,
-                            "is_dir": stats.is_dir,
-                        },
-                    )
-                self.dir_cache.put(path, cached_entries)
-
-            except FileNotFoundError:
-                raise NTStatusObjectNameNotFound()
-            except PermissionError:
-                raise NTStatusAccessDenied()
-
-        result = []
-        past_marker = marker is None
-        for entry in cached_entries:
-            name = entry["name"]
-            if not past_marker:
-                if name == marker:
-                    past_marker = True
-                continue
-            result.append(
-                {
-                    "file_name": name,
-                    "file_size": entry["file_size"],
-                    "allocation_size": entry["allocation_size"],
-                    "creation_time": entry["creation_time"],
-                    "last_access_time": entry["last_access_time"],
-                    "last_write_time": entry["last_write_time"],
-                    "change_time": entry["change_time"],
-                    "file_attributes": entry["file_attributes"],
-                }
-            )
-        return result
-
-    @operation
-    def get_security(self, file_context: OpenedContext):
-        """Get security descriptor for an open file handle.
-
-        Returns a default security descriptor since FTP doesn't support
-        Windows ACLs. This allows all users full access.
         """
-        return (_DEFAULT_SD.handle, _DEFAULT_SD.size)
+        Get security descriptor for a file.
 
-    @operation
-    def get_file_info(self, file_context: OpenedContext) -> dict[str, Any]:
-        """Get file metadata."""
-        return {
-            "file_attributes": file_context.attributes,
-            "file_size": file_context.file_size,
-            "allocation_size": file_context.file_size,
-            "creation_time": file_context.creation_time,
-            "last_access_time": file_context.last_access_time,
-            "last_write_time": file_context.last_write_time,
-            "change_time": file_context.change_time,
-            "index_number": 0,
-        }
+        For FTP, we generally return a default permissive security descriptor
+        to allow the user to read/write everything.
 
-    @operation
-    def write(
-        self,
-        file_context: OpenedContext,
-        buffer: bytes,
-        offset: int,
-        write_to_end_of_file: bool = False,
-        constrained_io: bool = False,
-    ) -> int:
-        """Write data to file."""
-        if file_context.buffer is None:
-            if file_context.file_size > 0:
-                try:
-                    existing_data = self.ftp.read_file(file_context.path, 0, None)
-                    file_context.buffer = BytesIO(existing_data)
-                except FileNotFoundError:
-                    file_context.buffer = BytesIO()
-            else:
-                file_context.buffer = BytesIO()
+        Returns:
+            Tuple of (file_attributes, security_descriptor, size)
+        """
+        raise NotImplementedError
 
-        if write_to_end_of_file:
-            offset = file_context.file_size
+    def open(self, file_name: str, create_options: int, granted_access: int):
+        """
+        Open a file or directory.
 
-        file_context.buffer.seek(offset)
-        bytes_written = file_context.buffer.write(buffer)
+        Logic:
+        1. Check if file exists in cache or via FTP LIST/MLSD.
+        2. If file doesn't exist, return STATUS_OBJECT_NAME_NOT_FOUND.
+        3. Create a FileContext object to track this handle.
+        4. If it's a file we intend to read, maybe pre-fetch or prepare FTP connection.
 
-        new_size = offset + bytes_written
-        if new_size > file_context.file_size:
-            file_context.file_size = new_size
+        Args:
+            file_name: Path relative to mount point (e.g., "\\folder\\file.txt")
+            create_options: Windows create options
+            granted_access: Requested access rights
 
-        file_context.dirty = True
-        return bytes_written
+        Returns:
+            FileContext object (opaque handle passed to other methods)
+        """
+        raise NotImplementedError
 
-    @operation
-    def flush(self, file_context: OpenedContext) -> None:
-        """Flush buffers to FTP server."""
-        if not file_context.dirty or file_context.buffer is None:
-            return
+    def close(self, file_context):
+        """
+        Close file handle.
 
-        try:
-            file_context.buffer.seek(0)
-            data = file_context.buffer.read()
-            self.ftp.write_file(file_context.path, data, 0)
-            self.meta_cache.invalidate(file_context.path)
-            file_context.dirty = False
-        except PermissionError:
-            raise NTStatusAccessDenied()
-        except FileNotFoundError:
-            raise NTStatusObjectNameNotFound()
-        except TimeoutError:
-            raise NTStatusAccessDenied()
+        Logic:
+        1. If file was written to, ensure data is flushed to FTP.
+        2. Release FTP connection to pool.
+        3. Free FileContext.
+        """
+        raise NotImplementedError
 
-    @operation
-    def set_file_info(self, file_context: OpenedContext, file_info: dict[str, Any]) -> None:
-        """Set file metadata."""
-        if "file_size" in file_info and file_info["file_size"] == 0:
-            file_context.buffer = BytesIO()
-            file_context.file_size = 0
-            file_context.dirty = True
+    def read(self, file_context, offset: int, length: int):
+        """
+        Read data from file.
 
-    @operation
-    def create(
-        self,
-        file_name: str,
-        create_options: int,
-        granted_access: int,
-        file_attributes: int,
-        security_descriptor,
-        allocation_size: int,
-    ) -> OpenedContext:
-        """Create a new file or directory."""
-        ftp_path = self._to_ftp_path(file_name)
-        is_directory = bool(create_options & FILE_DIRECTORY_FILE)
-        logger.debug("create: %s -> %s (directory=%s)", file_name, ftp_path, is_directory)
+        Logic:
+        1. Check if data is in local read buffer.
+        2. If not, fetch from FTP using `ftp.read_file(path, offset, length)`.
+        3. Handle EOF (return fewer bytes than requested).
 
-        try:
-            if is_directory:
-                self.ftp.create_dir(ftp_path)
-                attributes = FILE_ATTRIBUTE_DIRECTORY
-            else:
-                self.ftp.create_file(ftp_path)
-                attributes = FILE_ATTRIBUTE_NORMAL
+        Returns:
+            bytes: Data read
+        """
+        raise NotImplementedError
 
-            self.dir_cache.invalidate_parent(ftp_path)
-            now_filetime = filetime_now()
+    def write(self, file_context, buffer: bytes, offset: int):
+        """
+        Write data to file.
 
-            ctx = OpenedContext(
-                path=ftp_path,
-                is_directory=is_directory,
-                file_size=0,
-                attributes=attributes,
-                mtime_filetime=now_filetime,
-            )
-            if not is_directory:
-                ctx.buffer = BytesIO()
-            return ctx
+        Logic:
+        1. Write to local buffer in FileContext.
+        2. Mark context as 'dirty'.
+        3. (Optional) Flush to FTP immediately if buffer full.
 
-        except FileExistsError:
-            raise NTStatusObjectNameCollision()
-        except PermissionError:
-            raise NTStatusAccessDenied()
-        except TimeoutError:
-            raise NTStatusAccessDenied()
+        Returns:
+            int: Bytes written
+        """
+        raise NotImplementedError
 
-    @operation
-    def cleanup(self, file_context: OpenedContext, file_name: str, flags: int) -> None:
-        """Called when handle is closed. Handle deletion and flush here."""
-        # Flush dirty buffers
-        if file_context.dirty and file_context.buffer is not None:
-            try:
-                file_context.buffer.seek(0)
-                data = file_context.buffer.read()
-                self.ftp.write_file(file_context.path, data, 0)
-                self.meta_cache.invalidate(file_context.path)
-                file_context.dirty = False
-            except Exception:
-                pass  # Best effort flush
+    def flush(self, file_context):
+        """
+        Flush buffers to storage.
 
-        # Handle deletion
-        if not (flags & FspCleanupDelete):
-            return
+        Logic:
+        1. If FileContext is dirty, upload buffer to FTP.
+        2. Use `ftp.write_file()` or `ftp.stor()`.
+        3. Update cache with new file size/time.
+        """
+        raise NotImplementedError
 
-        try:
-            if file_context.is_directory:
-                self.ftp.delete_dir(file_context.path)
-                self.dir_cache.invalidate(file_context.path)
-            else:
-                self.ftp.delete_file(file_context.path)
+    def get_file_info(self, file_context):
+        """
+        Get file metadata (stat).
 
-            self.dir_cache.invalidate_parent(file_context.path)
-            self.meta_cache.invalidate(file_context.path)
+        Returns:
+            FileInfo object (size, times, attributes)
+        """
+        raise NotImplementedError
 
-        except FileNotFoundError:
-            pass
-        except PermissionError:
-            raise NTStatusAccessDenied()
-        except OSError as e:
-            if "not empty" in str(e).lower():
-                raise NTStatusDirectoryNotEmpty()
-            raise NTStatusAccessDenied()
+    def set_file_info(self, file_context, file_info):
+        """
+        Set file metadata (chmod/chown/utime equivalent).
 
-    @operation
-    def rename(
-        self,
-        file_context: OpenedContext,
-        file_name: str,
-        new_file_name: str,
-        replace_if_exists: bool,
-    ) -> None:
-        """Rename/Move file or directory."""
-        old_ftp_path = self._to_ftp_path(file_name)
-        new_ftp_path = self._to_ftp_path(new_file_name)
+        Note: FTP has limited support for this (MDTM, CHMOD).
+        Implement what is possible, ignore others or return success silently.
+        """
+        raise NotImplementedError
 
-        try:
-            if not replace_if_exists:
-                try:
-                    self.ftp.get_file_info(new_ftp_path)
-                    raise NTStatusObjectNameCollision()
-                except FileNotFoundError:
-                    pass
+    def read_directory(self, file_context, marker: Optional[str]):
+        """
+        List directory contents.
 
-            if replace_if_exists:
-                try:
-                    stats = self.ftp.get_file_info(new_ftp_path)
-                    if stats.is_dir:
-                        self.ftp.delete_dir(new_ftp_path)
-                    else:
-                        self.ftp.delete_file(new_ftp_path)
-                except FileNotFoundError:
-                    pass
+        Logic:
+        1. Check DirectoryCache.
+        2. If miss, call `ftp.list_dir(path)`.
+        3. Update Cache.
+        4. Return list of directory entries.
 
-            self.ftp.rename(old_ftp_path, new_ftp_path)
+        Args:
+            marker: If not None, start listing after this filename (for pagination).
+        """
+        raise NotImplementedError
 
-            self.dir_cache.invalidate_parent(old_ftp_path)
-            self.dir_cache.invalidate_parent(new_ftp_path)
-            self.meta_cache.invalidate(old_ftp_path)
-            self.meta_cache.invalidate(new_ftp_path)
+    def create(self, file_name: str, create_options: int, granted_access: int, file_attributes: int, security_descriptor: bytes, allocation_size: int):
+        """
+        Create a new file or directory.
 
-            if file_context.is_directory:
-                self.dir_cache.invalidate(old_ftp_path)
+        Logic:
+        1. If FILE_DIRECTORY_FILE in create_options:
+           Call `ftp.create_dir()`.
+        2. Else:
+           Call `ftp.create_file()`.
+        3. Invalidate parent directory cache.
 
-            file_context.path = new_ftp_path
+        Returns:
+            FileContext for the new file.
+        """
+        raise NotImplementedError
 
-        except FileNotFoundError:
-            raise NTStatusObjectNameNotFound()
-        except PermissionError:
-            raise NTStatusAccessDenied()
-        except TimeoutError:
-            raise NTStatusAccessDenied()
+    def cleanup(self, file_context, flags: int):
+        """
+        Called when handle is closed. Handle deletion here.
+
+        Logic:
+        1. If flags indicates DeleteOnClose:
+           Call `ftp.delete_file()` or `ftp.delete_dir()`.
+           Invalidate parent cache.
+        """
+        raise NotImplementedError
+
+    def rename(self, file_context, file_name: str, new_file_name: str, replace_if_exists: bool):
+        """
+        Rename/Move file.
+
+        Logic:
+        1. Call `ftp.rename(old, new)`.
+        2. Invalidate caches for old parent and new parent.
+        """
+        raise NotImplementedError

@@ -7,7 +7,7 @@ setup(
     author="Your Name",
     packages=find_packages(),
     install_requires=[
-        "winfspy",
+        "winfspy; python_version < '3.12'",
         "cachetools",
     ],
     entry_points={
@@ -19,9 +19,11 @@ setup(
     extras_require={
         "dev": [
             "pytest",
+            "pytest-cov",
             "pyftpdlib",
             "build",
             "twine",
+            "psutil",
         ],
     },
 )

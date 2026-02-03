@@ -137,8 +137,3 @@ cython_debug/
 # IDEs
 .vscode/
 .idea/
-
-# Claude working files
-.claude/
-*-TODO.md
-nul
