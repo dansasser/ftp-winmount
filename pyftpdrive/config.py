@@ -116,7 +116,9 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
                 try:
                     ftp_config["port"] = int(ftp_section.get("port"))
                 except ValueError:
-                    raise ValueError(f"Invalid port value in config: '{ftp_section.get('port')}' - must be an integer")
+                    raise ValueError(
+                        f"Invalid port value in config: '{ftp_section.get('port')}' - must be an integer"
+                    )
             if ftp_section.get("username"):
                 ftp_config["username"] = ftp_section.get("username") or None
             if ftp_section.get("password"):
@@ -159,14 +161,18 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
                         cache_section.get("directory_ttl_seconds")
                     )
                 except ValueError:
-                    raise ValueError(f"Invalid directory_ttl_seconds value in config: '{cache_section.get('directory_ttl_seconds')}' - must be an integer")
+                    raise ValueError(
+                        f"Invalid directory_ttl_seconds value in config: '{cache_section.get('directory_ttl_seconds')}' - must be an integer"
+                    )
             if cache_section.get("metadata_ttl_seconds"):
                 try:
                     cache_config["metadata_ttl_seconds"] = int(
                         cache_section.get("metadata_ttl_seconds")
                     )
                 except ValueError:
-                    raise ValueError(f"Invalid metadata_ttl_seconds value in config: '{cache_section.get('metadata_ttl_seconds')}' - must be an integer")
+                    raise ValueError(
+                        f"Invalid metadata_ttl_seconds value in config: '{cache_section.get('metadata_ttl_seconds')}' - must be an integer"
+                    )
 
         # Load [connection] section
         if parser.has_section("connection"):
@@ -175,26 +181,34 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
                 try:
                     connection_config["timeout_seconds"] = int(conn_section.get("timeout_seconds"))
                 except ValueError:
-                    raise ValueError(f"Invalid timeout_seconds value in config: '{conn_section.get('timeout_seconds')}' - must be an integer")
+                    raise ValueError(
+                        f"Invalid timeout_seconds value in config: '{conn_section.get('timeout_seconds')}' - must be an integer"
+                    )
             if conn_section.get("retry_attempts"):
                 try:
                     connection_config["retry_attempts"] = int(conn_section.get("retry_attempts"))
                 except ValueError:
-                    raise ValueError(f"Invalid retry_attempts value in config: '{conn_section.get('retry_attempts')}' - must be an integer")
+                    raise ValueError(
+                        f"Invalid retry_attempts value in config: '{conn_section.get('retry_attempts')}' - must be an integer"
+                    )
             if conn_section.get("retry_delay_seconds"):
                 try:
                     connection_config["retry_delay_seconds"] = int(
                         conn_section.get("retry_delay_seconds")
                     )
                 except ValueError:
-                    raise ValueError(f"Invalid retry_delay_seconds value in config: '{conn_section.get('retry_delay_seconds')}' - must be an integer")
+                    raise ValueError(
+                        f"Invalid retry_delay_seconds value in config: '{conn_section.get('retry_delay_seconds')}' - must be an integer"
+                    )
             if conn_section.get("keepalive_interval_seconds"):
                 try:
                     connection_config["keepalive_interval_seconds"] = int(
                         conn_section.get("keepalive_interval_seconds")
                     )
                 except ValueError:
-                    raise ValueError(f"Invalid keepalive_interval_seconds value in config: '{conn_section.get('keepalive_interval_seconds')}' - must be an integer")
+                    raise ValueError(
+                        f"Invalid keepalive_interval_seconds value in config: '{conn_section.get('keepalive_interval_seconds')}' - must be an integer"
+                    )
 
         # Load [logging] section
         if parser.has_section("logging"):

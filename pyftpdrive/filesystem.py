@@ -26,8 +26,10 @@ try:
     try:
         from winfspy import NTStatusIOTimeout
     except ImportError:
+
         class NTStatusIOTimeout(Exception):
             """IO timeout status - fallback when winfspy doesn't export it."""
+
             pass
 
     FILE_ATTRIBUTE_DIRECTORY = FILE_ATTRIBUTE.FILE_ATTRIBUTE_DIRECTORY
@@ -70,6 +72,7 @@ except ImportError:
 
     class NTStatusIOTimeout(Exception):
         """IO timeout status - fallback when winfspy not available."""
+
         pass
 
 
