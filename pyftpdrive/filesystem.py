@@ -348,6 +348,15 @@ class FTPFileSystem(BaseFileSystemOperations):
         return result
 
     @operation
+    def get_security(self, file_context: OpenedContext):
+        """Get security descriptor for an open file handle.
+
+        Returns a default security descriptor since FTP doesn't support
+        Windows ACLs. This allows all users full access.
+        """
+        return (_DEFAULT_SD.handle, _DEFAULT_SD.size)
+
+    @operation
     def get_file_info(self, file_context: OpenedContext) -> dict[str, Any]:
         """Get file metadata."""
         return {
