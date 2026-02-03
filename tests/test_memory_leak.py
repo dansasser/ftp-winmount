@@ -38,7 +38,6 @@ def stress_test_directory_listing(drive_path, iterations):
     for _i in range(iterations):
         try:
             for _root, _dirs, _files in os.walk(drive_path):
-                pass  # Just traverse
                 break  # Shallow walk - only first level
         except Exception as e:
             print(f"[WARN] Walk error: {e}")

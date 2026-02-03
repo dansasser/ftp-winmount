@@ -43,7 +43,19 @@ Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environmen
     ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; \
     Check: NeedsAddPath('{app}')
 
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}"
+
 [Code]
+const
+  WM_SETTINGCHANGE = $001A;
+  SMTO_ABORTIFHUNG = $0002;
+
+function SendMessageTimeoutW(hWnd: HWND; Msg: UINT; wParam: WPARAM;
+  lParam: PAnsiChar; fuFlags: UINT; uTimeout: UINT;
+  var lpdwResult: DWORD): LRESULT;
+  external 'SendMessageTimeoutW@user32.dll stdcall';
+
 function NeedsAddPath(Param: string): boolean;
 var
   OrigPath: string;
@@ -58,21 +70,24 @@ begin
   Result := Pos(';' + Param + ';', ';' + OrigPath + ';') = 0;
 end;
 
-procedure CurStepChanged(CurStep: TSetupStep);
+procedure BroadcastEnvironmentChange();
 var
-  ResultCode: Integer;
+  Dummy: DWORD;
+begin
+  // Notify Windows that environment variables changed
+  // This broadcasts WM_SETTINGCHANGE so new terminals pick up PATH change
+  SendMessageTimeoutW($FFFF, WM_SETTINGCHANGE, 0, 'Environment',
+    SMTO_ABORTIFHUNG, 5000, Dummy);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
   begin
-    // Notify Windows that environment variables changed
-    // This broadcasts WM_SETTINGCHANGE so new terminals pick up PATH change
+    BroadcastEnvironmentChange();
   end;
 end;
 
-[UninstallDelete]
-Type: filesandordirs; Name: "{app}"
-
-[Code]
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   Path: string;
@@ -121,6 +136,9 @@ begin
       RegWriteExpandStringValue(HKEY_LOCAL_MACHINE,
         'SYSTEM\CurrentControlSet\Control\Session Manager\Environment',
         'Path', NewPath);
+
+      // Broadcast the change
+      BroadcastEnvironmentChange();
     end;
   end;
 end;
