@@ -465,7 +465,9 @@ class FTPFileSystem(BaseFileSystemOperations):
             file_context.buffer = BytesIO(current_content[:new_size])
         elif new_size > len(current_content):
             # Extend with zeros
-            file_context.buffer = BytesIO(current_content + b"\x00" * (new_size - len(current_content)))
+            file_context.buffer = BytesIO(
+                current_content + b"\x00" * (new_size - len(current_content))
+            )
         # else: same size, no change needed
 
         file_context.file_size = new_size
