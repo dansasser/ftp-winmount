@@ -12,7 +12,7 @@ from unittest.mock import MagicMock
 
 def test_filesystem_creation_has_required_params():
     """Verify __main__.py passes critical params to FileSystem."""
-    with open("pyftpdrive/__main__.py", encoding="utf-8") as f:
+    with open("ftp_winmount/__main__.py", encoding="utf-8") as f:
         source = f.read()
 
     assert "um_file_context_is_user_context2=1" in source, (
@@ -27,7 +27,7 @@ def test_filesystem_creation_has_required_params():
 
 def test_operation_decorator_exists():
     """Verify the operation decorator is defined and works."""
-    from pyftpdrive.filesystem import operation
+    from ftp_winmount.filesystem import operation
 
     # Test it actually locks
     class FakeFS:
@@ -45,7 +45,7 @@ def test_operation_decorator_exists():
 
 def test_all_methods_have_operation_decorator():
     """Verify every public method has @operation."""
-    from pyftpdrive.filesystem import FTPFileSystem
+    from ftp_winmount.filesystem import FTPFileSystem
 
     required_methods = [
         "get_volume_info",
@@ -74,7 +74,7 @@ def test_all_methods_have_operation_decorator():
 
 def test_opened_context_has_required_attributes():
     """Verify OpenedContext has all required attributes with FILETIME integers."""
-    from pyftpdrive.filesystem import OpenedContext
+    from ftp_winmount.filesystem import OpenedContext
 
     ctx = OpenedContext(
         path="/test",
@@ -111,7 +111,7 @@ def test_opened_context_has_required_attributes():
 
 def test_get_file_info_return_format():
     """Verify get_file_info returns correct dict format with FILETIME integers."""
-    from pyftpdrive.filesystem import FTPFileSystem, OpenedContext
+    from ftp_winmount.filesystem import FTPFileSystem, OpenedContext
 
     mock_ftp = MagicMock()
     mock_config = MagicMock()
@@ -154,8 +154,8 @@ def test_get_file_info_return_format():
 
 def test_read_directory_return_format():
     """Verify read_directory returns list of dicts with file_name key."""
-    from pyftpdrive.filesystem import FTPFileSystem, OpenedContext
-    from pyftpdrive.ftp_client import FileStats
+    from ftp_winmount.filesystem import FTPFileSystem, OpenedContext
+    from ftp_winmount.ftp_client import FileStats
 
     mock_ftp = MagicMock()
     mock_ftp.list_dir.return_value = [
@@ -191,7 +191,7 @@ def test_read_directory_return_format():
 
 def test_close_does_nothing():
     """Verify close() has no side effects."""
-    from pyftpdrive.filesystem import FTPFileSystem, OpenedContext
+    from ftp_winmount.filesystem import FTPFileSystem, OpenedContext
 
     mock_ftp = MagicMock()
     mock_config = MagicMock()
@@ -220,8 +220,8 @@ def test_close_does_nothing():
 
 def test_full_open_get_file_info_close_cycle():
     """Test complete file operation cycle without mounting."""
-    from pyftpdrive.filesystem import FTPFileSystem, OpenedContext
-    from pyftpdrive.ftp_client import FileStats
+    from ftp_winmount.filesystem import FTPFileSystem, OpenedContext
+    from ftp_winmount.ftp_client import FileStats
 
     mock_ftp = MagicMock()
     mock_ftp.get_file_info.return_value = FileStats(

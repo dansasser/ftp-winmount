@@ -96,24 +96,24 @@ PyFTPDrive is a Python application that mounts a remote FTP server as a local Wi
 ## Command Line Interface
 ```bash
 # Mount with config file
-pyftpdrive mount --config config.ini
+ftp-winmount mount --config config.ini
 
 # Mount with arguments
-pyftpdrive mount --host 192.168.0.130 --port 2121 --drive Z
+ftp-winmount mount --host 192.168.0.130 --port 2121 --drive Z
 
 # Unmount
-pyftpdrive unmount --drive Z
+ftp-winmount unmount --drive Z
 
 # Status
-pyftpdrive status
+ftp-winmount status
 ```
 
 ---
 
 ## File Structure
 ```
-pyftpdrive/
-├── pyftpdrive/
+ftp-winmount/
+├── ftp_winmount/
 │   ├── __init__.py
 │   ├── __main__.py          # Entry point, CLI handling
 │   ├── config.py            # Configuration loading
@@ -219,7 +219,7 @@ keepalive_interval_seconds = 60
 
 [logging]
 level = INFO
-file = pyftpdrive.log
+file = ftp-winmount.log
 console = false
 ```
 

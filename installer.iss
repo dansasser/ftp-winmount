@@ -1,11 +1,11 @@
-; Inno Setup Script for PyFTPDrive
+; Inno Setup Script for FTP-WinMount
 ; Build with: iscc installer.iss
 
-#define MyAppName "PyFTPDrive"
+#define MyAppName "FTP-WinMount"
 #define MyAppVersion "0.1.0"
 #define MyAppPublisher "Daniel T Sasser II"
 #define MyAppURL "https://github.com/dansasser/ftp-winmount"
-#define MyAppExeName "pyftpdrive.exe"
+#define MyAppExeName "ftp-winmount.exe"
 
 [Setup]
 AppId={{E8F5A9D2-7C3B-4E1F-9A8D-6B5C4E3F2A1D}
@@ -20,7 +20,7 @@ DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 LicenseFile=LICENSE
 OutputDir=dist
-OutputBaseFilename=pyftpdrive-{#MyAppVersion}-setup
+OutputBaseFilename=ftp-winmount-{#MyAppVersion}-setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -31,7 +31,7 @@ ChangesEnvironment=yes
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "dist\pyftpdrive.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\ftp-winmount.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName} Documentation"; Filename: "{#MyAppURL}"

@@ -1,8 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec file for PyFTPDrive
+PyInstaller spec file for FTP-WinMount
 
-Build with: pyinstaller pyftpdrive.spec
+Build with: pyinstaller ftp_winmount.spec
 Or use: python build_exe.py
 """
 
@@ -71,7 +71,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='pyftpdrive',
+    name='ftp-winmount',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

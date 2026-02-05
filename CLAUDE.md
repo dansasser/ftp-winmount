@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-PyFTPDrive is a Python application that mounts a remote FTP server as a local Windows drive letter using WinFsp. This enables seamless file access from any application (VS Code, File Explorer, etc.) without sync operations or third-party adware.
+FTP-WinMount is a Python application that mounts a remote FTP server as a local Windows drive letter using WinFsp. This enables seamless file access from any application (VS Code, File Explorer, etc.) without sync operations or third-party adware.
 
 ## Tech Stack
 
@@ -13,8 +13,8 @@ PyFTPDrive is a Python application that mounts a remote FTP server as a local Wi
 
 ## Project Structure
 ```
-pyftpdrive/
-├── pyftpdrive/
+ftp-winmount/
+├── ftp_winmount/
 │   ├── __init__.py
 │   ├── __main__.py          # Entry point, CLI handling
 │   ├── config.py            # Configuration loading
@@ -47,7 +47,7 @@ cachetools
 pip install -e .
 
 # Run directly
-python -m pyftpdrive mount --host 192.168.0.130 --port 2121 --drive Z
+python -m ftp_winmount mount --host 192.168.0.130 --port 2121 --drive Z
 
 # Run tests
 pytest

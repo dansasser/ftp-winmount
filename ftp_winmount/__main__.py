@@ -1,5 +1,5 @@
 """
-PyFTPDrive - Main Entry Point
+FTP-WinMount - Main Entry Point
 
 This module provides the CLI interface and wires up all components
 to mount an FTP server as a local Windows drive using WinFsp.
@@ -26,14 +26,14 @@ logger = logging.getLogger(__name__)
 def parse_args():
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        description="PyFTPDrive - Mount FTP as Local Drive",
+        description="FTP-WinMount - Mount FTP as Local Drive",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  pyftpdrive mount --host 192.168.0.130 --port 2121 --drive Z
-  pyftpdrive mount --config config.ini
-  pyftpdrive unmount --drive Z
-  pyftpdrive status
+  ftp-winmount mount --host 192.168.0.130 --port 2121 --drive Z
+  ftp-winmount mount --config config.ini
+  ftp-winmount unmount --drive Z
+  ftp-winmount status
         """,
     )
 
@@ -86,7 +86,7 @@ def cmd_mount(args):
 
         # 2. Setup Logging
         setup_logging(config.logging)
-        logger.info("Starting PyFTPDrive v0.1.0")
+        logger.info("Starting FTP-WinMount v0.1.0")
         logger.info(
             "Mounting %s:%d to %s:", config.ftp.host, config.ftp.port, config.mount.drive_letter
         )
@@ -311,14 +311,14 @@ def main():
     elif args.command == "status":
         return cmd_status(args)
     else:
-        print("Usage: pyftpdrive <command> [options]")
+        print("Usage: ftp-winmount <command> [options]")
         print()
         print("Commands:")
         print("  mount    Mount an FTP server as a local drive")
         print("  unmount  Unmount a drive")
         print("  status   Show mounted drives")
         print()
-        print("Run 'pyftpdrive <command> --help' for more information.")
+        print("Run 'ftp-winmount <command> --help' for more information.")
         return 1
 
 

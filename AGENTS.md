@@ -14,12 +14,12 @@ Your task is to implement the logic within the provided skeletons.
 ## Implementation Guide
 
 ### 1. Configuration & Logging (Low Hanging Fruit)
-- **Files:** `pyftpdrive/config.py`, `pyftpdrive/logger.py`
+- **Files:** `ftp_winmount/config.py`, `ftp_winmount/logger.py`
 - **Task:** Implement `load_config` to read the INI file and `setup_logging` to configure the Python logger.
-- **Verification:** Run `python -c "from pyftpdrive.config import load_config; print(load_config('config.example.ini'))"`
+- **Verification:** Run `python -c "from ftp_winmount.config import load_config; print(load_config('config.example.ini'))"`
 
 ### 2. FTP Client (Platform Independent)
-- **File:** `pyftpdrive/ftp_client.py`
+- **File:** `ftp_winmount/ftp_client.py`
 - **Task:** Implement the wrapper around `ftplib`.
 - **Key Requirements:**
     - `connect()`: Handle passive mode and timeouts.
@@ -30,7 +30,7 @@ Your task is to implement the logic within the provided skeletons.
     - Write a unit test to verify `FTPClient` against localhost:2121.
 
 ### 3. Caching (Performance)
-- **File:** `pyftpdrive/cache.py`
+- **File:** `ftp_winmount/cache.py`
 - **Task:** Implement `DirectoryCache` using `cachetools` or a simple dictionary with expiry.
 - **Logic:**
     - `get(path)`: Return listing if `now < expires_at`.
@@ -38,7 +38,7 @@ Your task is to implement the logic within the provided skeletons.
     - `invalidate(path)`: Remove entry.
 
 ### 4. Filesystem (The Core)
-- **File:** `pyftpdrive/filesystem.py`
+- **File:** `ftp_winmount/filesystem.py`
 - **Reference:** `docs/ROUTING_MATRIX.md` (Crucial!)
 - **Task:** Implement the WinFsp callbacks.
 - **Strategy:**
@@ -49,7 +49,7 @@ Your task is to implement the logic within the provided skeletons.
     - Use `DirectoryCache` in `read_directory`.
 
 ### 5. CLI Entry Point
-- **File:** `pyftpdrive/__main__.py`
+- **File:** `ftp_winmount/__main__.py`
 - **Task:** Wire everything together.
     - Initialize `FTPClient`.
     - Initialize `FTPFileSystem`.
@@ -58,7 +58,7 @@ Your task is to implement the logic within the provided skeletons.
 
 ## Testing & verification
 - Use the provided `config.example.ini`.
-- Run `pyftpdrive mount --config config.example.ini`.
+- Run `ftp-winmount mount --config config.example.ini`.
 - Open File Explorer to `Z:\`.
 - Verify you can read, write, and list files.
 

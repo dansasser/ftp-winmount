@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Build standalone executable for PyFTPDrive.
+Build standalone executable for FTP-WinMount.
 
 Usage:
     python build_exe.py
 
 Output:
-    dist/pyftpdrive.exe
+    dist/ftp-winmount.exe
 """
 
 import shutil
@@ -19,9 +19,9 @@ def main():
     project_root = Path(__file__).parent.resolve()
     dist_dir = project_root / "dist"
     build_dir = project_root / "build"
-    spec_file = project_root / "pyftpdrive.spec"
+    spec_file = project_root / "ftp_winmount.spec"
 
-    print("[INFO] Building PyFTPDrive standalone executable...")
+    print("[INFO] Building FTP-WinMount standalone executable...")
     print(f"[INFO] Project root: {project_root}")
 
     # Check PyInstaller is installed
@@ -58,7 +58,7 @@ def main():
         return result.returncode
 
     # Check output
-    exe_path = dist_dir / "pyftpdrive.exe"
+    exe_path = dist_dir / "ftp-winmount.exe"
     if exe_path.exists():
         size_mb = exe_path.stat().st_size / (1024 * 1024)
         print(f"[OK] Build successful!")

@@ -1,5 +1,5 @@
 """
-Unit tests for pyftpdrive.config module.
+Unit tests for ftp_winmount.config module.
 
 Tests cover:
 - Loading configuration from INI files
@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from pyftpdrive.config import (
+from ftp_winmount.config import (
     AppConfig,
     CacheConfig,
     ConnectionConfig,

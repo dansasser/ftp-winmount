@@ -68,14 +68,14 @@ jobs:
         run: |
           $version = "${{ steps.get_version.outputs.VERSION }}"
           # Rename standalone exe
-          Move-Item "dist/pyftpdrive.exe" "dist/pyftpdrive-$version-portable.exe"
+          Move-Item "dist/ftp-winmount.exe" "dist/ftp-winmount-$version-portable.exe"
           # Installer already named with version by Inno Setup
         shell: pwsh
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pyftpdrive-windows
+          name: ftp-winmount-windows
           path: dist/*
 
   create-release:
@@ -90,7 +90,7 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: pyftpdrive-windows
+          name: ftp-winmount-windows
           path: dist
 
       - name: Create Release
@@ -105,9 +105,9 @@ jobs:
           body: |
             ## Installation
 
-            **Recommended:** Download `pyftpdrive-${{ github.ref_name }}-setup.exe` and run the installer. This installs PyFTPDrive to Program Files and adds it to your PATH.
+            **Recommended:** Download `ftp-winmount-${{ github.ref_name }}-setup.exe` and run the installer. This installs FTP-WinMount to Program Files and adds it to your PATH.
 
-            **Portable:** Download `pyftpdrive-${{ github.ref_name }}-portable.exe` if you don't want to install. Run it from anywhere with the full path.
+            **Portable:** Download `ftp-winmount-${{ github.ref_name }}-portable.exe` if you don't want to install. Run it from anywhere with the full path.
 
             **Requirement:** [WinFsp](https://winfsp.dev/rel/) must be installed first.
         env:

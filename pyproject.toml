@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyftpdrive"
+name = "ftp-winmount"
 version = "0.1.0"
 description = "Mount FTP server as a local Windows drive using WinFsp"
 readme = "README.md"
@@ -49,7 +49,7 @@ dev = [
 ]
 
 [project.scripts]
-pyftpdrive = "pyftpdrive.__main__:main"
+ftp-winmount = "ftp_winmount.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/dansasser/ftp-winmount"
@@ -59,7 +59,7 @@ Issues = "https://github.com/dansasser/ftp-winmount/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["pyftpdrive*"]
+include = ["ftp_winmount*"]
 
 [tool.ruff]
 target-version = "py310"
@@ -86,7 +86,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["pyftpdrive"]
+known-first-party = ["ftp_winmount"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -101,7 +101,7 @@ warn_unused_configs = true
 ignore_missing_imports = true
 
 [tool.coverage.run]
-source = ["pyftpdrive"]
+source = ["ftp_winmount"]
 branch = true
 
 [tool.coverage.report]
