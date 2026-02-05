@@ -2,7 +2,7 @@
 ; Build with: iscc installer.iss
 
 #define MyAppName "FTP-WinMount"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "0.1.1"
 #define MyAppPublisher "Daniel T Sasser II"
 #define MyAppURL "https://github.com/dansasser/ftp-winmount"
 #define MyAppExeName "ftp-winmount.exe"
