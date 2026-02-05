@@ -90,8 +90,45 @@ jobs:
       - name: Check package
         run: twine check dist/*
 
-      - name: Upload artifacts
+      - name: Upload wheel artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dist
+          name: dist-wheel
           path: dist/
+
+  build-exe:
+    name: Build Standalone EXE
+    runs-on: windows-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install WinFsp
+        run: |
+          $url = "https://github.com/winfsp/winfsp/releases/download/v2.0/winfsp-2.0.23075.msi"
+          $output = "$env:TEMP\winfsp.msi"
+          Invoke-WebRequest -Uri $url -OutFile $output
+          Start-Process msiexec.exe -ArgumentList "/i", $output, "/quiet", "/norestart", "ADDLOCAL=ALL" -Wait
+        shell: pwsh
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+        env:
+          WINFSP_INC_DIR: "C:\\Program Files (x86)\\WinFsp\\inc"
+          WINFSP_LIB_DIR: "C:\\Program Files (x86)\\WinFsp\\lib"
+
+      - name: Build executable
+        run: python build_exe.py
+
+      - name: Upload exe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyftpdrive-exe
+          path: dist/pyftpdrive.exe
