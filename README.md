@@ -12,12 +12,17 @@ Mount any FTP server as a local Windows drive. No sync, no ads, no telemetry.
 
 ## Download
 
-**No Python required.** Download from [GitHub Releases](https://github.com/dansasser/ftp-winmount/releases/latest).
+**No Python required.** Download the latest release:
+
+| Download | Description |
+|----------|-------------|
+| [Installer (.exe)](https://github.com/dansasser/ftp-winmount/releases/latest) | Installs to Program Files, adds to PATH |
+| [Portable (.exe)](https://github.com/dansasser/ftp-winmount/releases/latest) | No installation, run from anywhere |
 
 ### Installer (Recommended)
 
 1. Install [WinFsp](https://winfsp.dev/rel/) (required dependency)
-2. Download `ftp-winmount-X.X.X-setup.exe`
+2. Download `ftp-winmount-*-setup.exe` from [Releases](https://github.com/dansasser/ftp-winmount/releases/latest)
 3. Run the installer (installs to Program Files and adds to PATH)
 4. Open any terminal and run:
    ```bash
@@ -29,10 +34,10 @@ Mount any FTP server as a local Windows drive. No sync, no ads, no telemetry.
 If you don't want to install:
 
 1. Install [WinFsp](https://winfsp.dev/rel/) (required dependency)
-2. Download `ftp-winmount-X.X.X-portable.exe`
+2. Download `ftp-winmount-*-portable.exe` from [Releases](https://github.com/dansasser/ftp-winmount/releases/latest)
 3. Run from wherever you saved it:
    ```bash
-   C:\Downloads\ftp-winmount-0.1.0-portable.exe mount --host 192.168.0.130 --port 2121 --drive Z
+   C:\Downloads\ftp-winmount-0.1.1-portable.exe mount --host 192.168.0.130 --port 2121 --drive Z
    ```
 
 ---
