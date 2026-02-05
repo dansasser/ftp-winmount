@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from pyftpdrive.config import (
+from ftp_winmount.config import (
     AppConfig,
     CacheConfig,
     ConnectionConfig,
@@ -18,7 +18,7 @@ from pyftpdrive.config import (
     LogConfig,
     MountConfig,
 )
-from pyftpdrive.ftp_client import FileStats, FTPClient
+from ftp_winmount.ftp_client import FileStats, FTPClient
 
 
 @pytest.fixture
@@ -147,7 +147,7 @@ def ftp_client(
     Returns:
         FTPClient instance with mocked underlying FTP.
     """
-    with patch("pyftpdrive.ftp_client.ftplib.FTP", return_value=mock_ftp):
+    with patch("ftp_winmount.ftp_client.ftplib.FTP", return_value=mock_ftp):
         client = FTPClient(ftp_config, conn_config)
         client._ftp = mock_ftp
         client._connected = True

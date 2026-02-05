@@ -21,10 +21,10 @@ jobs:
         run: pip install ruff
 
       - name: Run ruff check
-        run: ruff check pyftpdrive tests
+        run: ruff check ftp_winmount tests
 
       - name: Run ruff format check
-        run: ruff format --check pyftpdrive tests
+        run: ruff format --check ftp_winmount tests
 
   test:
     runs-on: windows-latest
@@ -151,5 +151,5 @@ jobs:
       - name: Upload exe artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pyftpdrive-exe
-          path: dist/pyftpdrive.exe
+          name: ftp-winmount-exe
+          path: dist/ftp-winmount.exe

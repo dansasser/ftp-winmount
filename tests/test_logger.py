@@ -1,5 +1,5 @@
 """
-Unit tests for pyftpdrive.logger module.
+Unit tests for ftp_winmount.logger module.
 
 Tests cover:
 - FileHandler creation when file is specified
@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from pyftpdrive.config import LogConfig
-from pyftpdrive.logger import LOG_FORMAT, setup_logging
+from ftp_winmount.config import LogConfig
+from ftp_winmount.logger import LOG_FORMAT, setup_logging
 
 
 class TestSetupLoggingFileHandler:

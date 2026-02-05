@@ -38,7 +38,7 @@ class ConnectionConfig:
 @dataclass
 class LogConfig:
     level: str = "INFO"
-    file: str = "pyftpdrive.log"
+    file: str = "ftp-winmount.log"
     console: bool = True
 
 
@@ -94,7 +94,7 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
     }
     log_config = {
         "level": "INFO",
-        "file": "pyftpdrive.log",
+        "file": "ftp-winmount.log",
         "console": True,
     }
 

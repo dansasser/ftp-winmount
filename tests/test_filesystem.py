@@ -1,5 +1,5 @@
 """
-Unit tests for pyftpdrive.filesystem module.
+Unit tests for ftp_winmount.filesystem module.
 
 Tests cover:
 - Path conversion (_to_ftp_path)
@@ -19,8 +19,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from pyftpdrive.config import CacheConfig
-from pyftpdrive.filesystem import (
+from ftp_winmount.config import CacheConfig
+from ftp_winmount.filesystem import (
     FILE_ATTRIBUTE_DIRECTORY,
     FILE_ATTRIBUTE_NORMAL,
     FILE_DIRECTORY_FILE,
@@ -32,7 +32,7 @@ from pyftpdrive.filesystem import (
     NTStatusObjectNameNotFound,
     OpenedContext,
 )
-from pyftpdrive.ftp_client import FileStats
+from ftp_winmount.ftp_client import FileStats
 
 
 def FileContext(

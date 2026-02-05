@@ -1,6 +1,6 @@
 # PyFTPDrive
 
-[![PyPI version](https://badge.fury.io/py/pyftpdrive.svg)](https://badge.fury.io/py/pyftpdrive)
+[![PyPI version](https://badge.fury.io/py/ftp-winmount.svg)](https://badge.fury.io/py/ftp-winmount)
 [![CI](https://github.com/dansasser/ftp-winmount/actions/workflows/ci.yml/badge.svg)](https://github.com/dansasser/ftp-winmount/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -17,11 +17,11 @@ Mount any FTP server as a local Windows drive. No sync, no ads, no telemetry.
 ### Installer (Recommended)
 
 1. Install [WinFsp](https://winfsp.dev/rel/) (required dependency)
-2. Download `pyftpdrive-X.X.X-setup.exe`
+2. Download `ftp-winmount-X.X.X-setup.exe`
 3. Run the installer (installs to Program Files and adds to PATH)
 4. Open any terminal and run:
    ```bash
-   pyftpdrive mount --host 192.168.0.130 --port 2121 --drive Z
+   ftp-winmount mount --host 192.168.0.130 --port 2121 --drive Z
    ```
 
 ### Portable
@@ -29,10 +29,10 @@ Mount any FTP server as a local Windows drive. No sync, no ads, no telemetry.
 If you don't want to install:
 
 1. Install [WinFsp](https://winfsp.dev/rel/) (required dependency)
-2. Download `pyftpdrive-X.X.X-portable.exe`
+2. Download `ftp-winmount-X.X.X-portable.exe`
 3. Run from wherever you saved it:
    ```bash
-   C:\Downloads\pyftpdrive-0.1.0-portable.exe mount --host 192.168.0.130 --port 2121 --drive Z
+   C:\Downloads\ftp-winmount-0.1.0-portable.exe mount --host 192.168.0.130 --port 2121 --drive Z
    ```
 
 ---
@@ -105,10 +105,10 @@ See [Download](#download) section above. No Python required. Installs to Program
 ### From PyPI
 
 ```bash
-pip install pyftpdrive
+pip install ftp-winmount
 ```
 
-This installs `pyftpdrive` to your Python Scripts folder. Make sure that folder is in your PATH.
+This installs `ftp-winmount` to your Python Scripts folder. Make sure that folder is in your PATH.
 
 **Note:** If you install inside a virtual environment, the command will only work when that venv is activated.
 
@@ -130,7 +130,7 @@ pip install -e ".[dev]"
 
 ### Building Standalone Executable
 
-To build `pyftpdrive.exe` yourself:
+To build `ftp-winmount.exe` yourself:
 
 ```bash
 git clone https://github.com/dansasser/ftp-winmount.git
@@ -139,7 +139,7 @@ pip install -e ".[dev]"
 python build_exe.py
 ```
 
-The executable will be at `dist/pyftpdrive.exe`.
+The executable will be at `dist/ftp-winmount.exe`.
 
 ### Building Installer
 
@@ -150,7 +150,7 @@ python build_exe.py
 iscc installer.iss
 ```
 
-The installer will be at `dist/pyftpdrive-X.X.X-setup.exe`.
+The installer will be at `dist/ftp-winmount-X.X.X-setup.exe`.
 
 ---
 
@@ -158,14 +158,14 @@ The installer will be at `dist/pyftpdrive-X.X.X-setup.exe`.
 
 Mount an anonymous FTP server:
 ```bash
-pyftpdrive mount --host 192.168.0.130 --port 2121 --drive Z
+ftp-winmount mount --host 192.168.0.130 --port 2121 --drive Z
 ```
 
 Your FTP server is now accessible at `Z:\`
 
 To unmount:
 ```bash
-pyftpdrive unmount --drive Z
+ftp-winmount unmount --drive Z
 ```
 
 Or just press `Ctrl+C` in the terminal.
@@ -177,22 +177,22 @@ Or just press `Ctrl+C` in the terminal.
 ### Command Line
 ```bash
 # Mount with minimal options
-pyftpdrive mount --host 192.168.0.130 --drive Z
+ftp-winmount mount --host 192.168.0.130 --drive Z
 
 # Mount with custom port
-pyftpdrive mount --host 192.168.0.130 --port 2121 --drive Z
+ftp-winmount mount --host 192.168.0.130 --port 2121 --drive Z
 
 # Mount with authentication
-pyftpdrive mount --host ftp.example.com --user myuser --password mypass --drive Z
+ftp-winmount mount --host ftp.example.com --user myuser --password mypass --drive Z
 
 # Mount with config file
-pyftpdrive mount --config config.ini
+ftp-winmount mount --config config.ini
 
 # Check status
-pyftpdrive status
+ftp-winmount status
 
 # Unmount
-pyftpdrive unmount --drive Z
+ftp-winmount unmount --drive Z
 ```
 
 ### Configuration File
@@ -214,12 +214,12 @@ directory_ttl_seconds = 30
 
 [logging]
 level = INFO
-file = pyftpdrive.log
+file = ftp-winmount.log
 ```
 
 Then run:
 ```bash
-pyftpdrive mount --config config.ini
+ftp-winmount mount --config config.ini
 ```
 
 ---
@@ -228,7 +228,7 @@ pyftpdrive mount --config config.ini
 
 1. Mount your FTP server:
 ```bash
-   pyftpdrive mount --host 192.168.0.130 --port 2121 --drive Z
+   ftp-winmount mount --host 192.168.0.130 --port 2121 --drive Z
 ```
 
 2. Open VS Code
@@ -252,7 +252,7 @@ python -m pyftpdlib -p 2121 -i 0.0.0.0 -w
 
 **Client (your machine):**
 ```bash
-pyftpdrive mount --host SERVER_IP --port 2121 --drive Z
+ftp-winmount mount --host SERVER_IP --port 2121 --drive Z
 ```
 
 ---
@@ -349,8 +349,8 @@ pytest
 ### Linting
 
 ```bash
-ruff check pyftpdrive tests
-ruff format pyftpdrive tests
+ruff check ftp_winmount tests
+ruff format ftp_winmount tests
 ```
 
 ### Build Package

@@ -1,5 +1,5 @@
 """
-Unit tests for pyftpdrive.cache module.
+Unit tests for ftp_winmount.cache module.
 
 Tests cover:
 - DirectoryCache.get returns None for missing entry
@@ -18,7 +18,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from unittest.mock import patch
 
-from pyftpdrive.cache import CacheEntry, DirectoryCache, MetadataCache
+from ftp_winmount.cache import CacheEntry, DirectoryCache, MetadataCache
 
 
 class TestDirectoryCacheGet:
@@ -519,7 +519,7 @@ class TestCacheTTLEdgeCases:
         # Using a mock to control time is more reliable
         cache = DirectoryCache(ttl_seconds=1)
 
-        with patch("pyftpdrive.cache.time.time") as mock_time:
+        with patch("ftp_winmount.cache.time.time") as mock_time:
             # Initial put at t=100
             mock_time.return_value = 100.0
             cache.put("/path", [{"name": "file"}])

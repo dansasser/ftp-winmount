@@ -1,5 +1,5 @@
 """
-Memory leak test for PyFTPDrive.
+Memory leak test for FTP-WinMount.
 
 This test monitors memory usage while performing repeated filesystem operations.
 Run while mount is active on Z:
@@ -12,12 +12,12 @@ import time
 import psutil
 
 
-def get_pyftpdrive_process():
-    """Find the pyftpdrive process."""
+def get_ftp_winmount_process():
+    """Find the ftp-winmount process."""
     for proc in psutil.process_iter(["pid", "name", "cmdline"]):
         try:
             cmdline = proc.info.get("cmdline") or []
-            if any("pyftpdrive" in str(arg) for arg in cmdline):
+            if any("ftp-winmount" in str(arg) or "ftp_winmount" in str(arg) for arg in cmdline):
                 return proc
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
@@ -70,9 +70,9 @@ def main():
     print("-" * 50)
 
     # Find process
-    proc = get_pyftpdrive_process()
+    proc = get_ftp_winmount_process()
     if not proc:
-        print("[ERROR] Cannot find pyftpdrive process")
+        print("[ERROR] Cannot find ftp-winmount process")
         print("        Make sure mount is running")
         return 1
 

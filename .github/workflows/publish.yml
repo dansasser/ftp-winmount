@@ -81,8 +81,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/pyftpdrive.exe
-            dist/pyftpdrive-*-setup.exe
+            dist/ftp-winmount.exe
+            dist/ftp-winmount-*-setup.exe
 
   publish-pypi:
     needs: build

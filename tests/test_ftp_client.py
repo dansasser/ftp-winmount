@@ -1,5 +1,5 @@
 """
-Unit tests for pyftpdrive.ftp_client module.
+Unit tests for ftp_winmount.ftp_client module.
 
 Tests cover:
 - Connect with anonymous auth
@@ -18,8 +18,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from pyftpdrive.config import ConnectionConfig, FTPConfig
-from pyftpdrive.ftp_client import FileStats, FTPClient
+from ftp_winmount.config import ConnectionConfig, FTPConfig
+from ftp_winmount.ftp_client import FileStats, FTPClient
 
 
 class TestFTPClientConnect:
@@ -35,7 +35,7 @@ class TestFTPClientConnect:
         )
         conn_config = ConnectionConfig()
 
-        with patch("pyftpdrive.ftp_client.ftplib.FTP") as MockFTP:
+        with patch("ftp_winmount.ftp_client.ftplib.FTP") as MockFTP:
             mock_ftp = MagicMock()
             MockFTP.return_value = mock_ftp
             mock_ftp.sendcmd.return_value = "211-Features:\r\n MLSD\r\n211 End"
@@ -63,7 +63,7 @@ class TestFTPClientConnect:
         )
         conn_config = ConnectionConfig()
 
-        with patch("pyftpdrive.ftp_client.ftplib.FTP") as MockFTP:
+        with patch("ftp_winmount.ftp_client.ftplib.FTP") as MockFTP:
             mock_ftp = MagicMock()
             MockFTP.return_value = mock_ftp
             mock_ftp.sendcmd.return_value = "211-Features:\r\n MLSD\r\n211 End"
@@ -81,7 +81,7 @@ class TestFTPClientConnect:
         ftp_config = FTPConfig(host="test.server.com", passive_mode=True)
         conn_config = ConnectionConfig()
 
-        with patch("pyftpdrive.ftp_client.ftplib.FTP") as MockFTP:
+        with patch("ftp_winmount.ftp_client.ftplib.FTP") as MockFTP:
             mock_ftp = MagicMock()
             MockFTP.return_value = mock_ftp
             mock_ftp.sendcmd.return_value = "200 OK"
@@ -96,7 +96,7 @@ class TestFTPClientConnect:
         ftp_config = FTPConfig(host="test.server.com", encoding="utf-8")
         conn_config = ConnectionConfig()
 
-        with patch("pyftpdrive.ftp_client.ftplib.FTP") as MockFTP:
+        with patch("ftp_winmount.ftp_client.ftplib.FTP") as MockFTP:
             mock_ftp = MagicMock()
             MockFTP.return_value = mock_ftp
             mock_ftp.sendcmd.return_value = "200 OK"
@@ -111,7 +111,7 @@ class TestFTPClientConnect:
         ftp_config = FTPConfig(host="test.server.com", username="bad", password="creds")
         conn_config = ConnectionConfig()
 
-        with patch("pyftpdrive.ftp_client.ftplib.FTP") as MockFTP:
+        with patch("ftp_winmount.ftp_client.ftplib.FTP") as MockFTP:
             mock_ftp = MagicMock()
             MockFTP.return_value = mock_ftp
             mock_ftp.login.side_effect = ftplib.error_perm("530 Login incorrect")
@@ -128,7 +128,7 @@ class TestFTPClientConnect:
         ftp_config = FTPConfig(host="test.server.com")
         conn_config = ConnectionConfig(timeout_seconds=5)
 
-        with patch("pyftpdrive.ftp_client.ftplib.FTP") as MockFTP:
+        with patch("ftp_winmount.ftp_client.ftplib.FTP") as MockFTP:
             mock_ftp = MagicMock()
             MockFTP.return_value = mock_ftp
             mock_ftp.connect.side_effect = TimeoutError("Connection timed out")
@@ -143,7 +143,7 @@ class TestFTPClientConnect:
         ftp_config = FTPConfig(host="test.server.com")
         conn_config = ConnectionConfig()
 
-        with patch("pyftpdrive.ftp_client.ftplib.FTP") as MockFTP:
+        with patch("ftp_winmount.ftp_client.ftplib.FTP") as MockFTP:
             mock_ftp = MagicMock()
             MockFTP.return_value = mock_ftp
             mock_ftp.connect.side_effect = OSError("Network unreachable")
@@ -504,7 +504,7 @@ class TestFTPClientRetryLogic:
         ftp_config = FTPConfig(host="test.server.com")
         conn_config = ConnectionConfig(retry_attempts=3, retry_delay_seconds=0)
 
-        with patch("pyftpdrive.ftp_client.ftplib.FTP") as MockFTP:
+        with patch("ftp_winmount.ftp_client.ftplib.FTP") as MockFTP:
             mock_ftp = MagicMock()
             MockFTP.return_value = mock_ftp
             mock_ftp.sendcmd.return_value = "211-Features:\r\n MLSD\r\n211 End"
@@ -532,7 +532,7 @@ class TestFTPClientRetryLogic:
         ftp_config = FTPConfig(host="test.server.com")
         conn_config = ConnectionConfig(retry_attempts=2, retry_delay_seconds=0)
 
-        with patch("pyftpdrive.ftp_client.ftplib.FTP") as MockFTP:
+        with patch("ftp_winmount.ftp_client.ftplib.FTP") as MockFTP:
             mock_ftp = MagicMock()
             MockFTP.return_value = mock_ftp
             mock_ftp.sendcmd.return_value = "211-Features:\r\n MLSD\r\n211 End"
@@ -560,7 +560,7 @@ class TestFTPClientRetryLogic:
         ftp_config = FTPConfig(host="test.server.com")
         conn_config = ConnectionConfig(retry_attempts=3, retry_delay_seconds=0)
 
-        with patch("pyftpdrive.ftp_client.ftplib.FTP") as MockFTP:
+        with patch("ftp_winmount.ftp_client.ftplib.FTP") as MockFTP:
             mock_ftp = MagicMock()
             MockFTP.return_value = mock_ftp
             mock_ftp.sendcmd.return_value = "211-Features:\r\n MLSD\r\n211 End"
@@ -580,7 +580,7 @@ class TestFTPClientRetryLogic:
         ftp_config = FTPConfig(host="test.server.com")
         conn_config = ConnectionConfig(retry_attempts=3, retry_delay_seconds=0)
 
-        with patch("pyftpdrive.ftp_client.ftplib.FTP") as MockFTP:
+        with patch("ftp_winmount.ftp_client.ftplib.FTP") as MockFTP:
             mock_ftp = MagicMock()
             MockFTP.return_value = mock_ftp
             mock_ftp.sendcmd.return_value = "211-Features:\r\n MLSD\r\n211 End"

@@ -29,10 +29,10 @@ from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.servers import FTPServer
 
 # Import our modules under test
-from pyftpdrive.cache import DirectoryCache
-from pyftpdrive.config import CacheConfig, ConnectionConfig, FTPConfig
-from pyftpdrive.filesystem import FTPFileSystem
-from pyftpdrive.ftp_client import FTPClient
+from ftp_winmount.cache import DirectoryCache
+from ftp_winmount.config import CacheConfig, ConnectionConfig, FTPConfig
+from ftp_winmount.filesystem import FTPFileSystem
+from ftp_winmount.ftp_client import FTPClient
 
 # =============================================================================
 # Fixtures
@@ -810,7 +810,7 @@ class TestFilesystemWriteOperations:
         ftp_server: dict[str, Any],
     ) -> None:
         """Test creating a file through filesystem layer."""
-        from pyftpdrive.filesystem import FILE_ATTRIBUTE_NORMAL
+        from ftp_winmount.filesystem import FILE_ATTRIBUTE_NORMAL
 
         test_path = "\\test_fs_create.txt"
 
@@ -844,7 +844,7 @@ class TestFilesystemWriteOperations:
         ftp_server: dict[str, Any],
     ) -> None:
         """Test creating a directory through filesystem layer."""
-        from pyftpdrive.filesystem import (
+        from ftp_winmount.filesystem import (
             FILE_ATTRIBUTE_DIRECTORY,
             FILE_DIRECTORY_FILE,
         )
@@ -880,7 +880,7 @@ class TestFilesystemWriteOperations:
         ftp_server: dict[str, Any],
     ) -> None:
         """Test writing data and flushing to FTP server."""
-        from pyftpdrive.filesystem import FILE_ATTRIBUTE_NORMAL
+        from ftp_winmount.filesystem import FILE_ATTRIBUTE_NORMAL
 
         test_path = "\\test_fs_write.txt"
         test_content = b"Test content via filesystem"
@@ -919,7 +919,7 @@ class TestFilesystemWriteOperations:
         ftp_server: dict[str, Any],
     ) -> None:
         """Test that cleanup() flushes dirty buffer (close is a no-op in winfspy)."""
-        from pyftpdrive.filesystem import FILE_ATTRIBUTE_NORMAL
+        from ftp_winmount.filesystem import FILE_ATTRIBUTE_NORMAL
 
         test_path = "\\test_fs_close_flush.txt"
         test_content = b"Content to flush on close"

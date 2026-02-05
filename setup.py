@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="pyftpdrive",
+    name="ftp-winmount",
     version="0.1.0",
     description="Mount FTP server as a local Windows drive",
     author="Daniel T Sasser II",
@@ -12,7 +12,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "pyftpdrive=pyftpdrive.__main__:main",
+            "ftp-winmount=ftp_winmount.__main__:main",
         ],
     },
     python_requires=">=3.10",
