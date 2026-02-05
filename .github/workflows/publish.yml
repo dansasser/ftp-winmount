@@ -42,9 +42,22 @@ jobs:
       - name: Install WinFsp
         run: |
           $url = "https://github.com/winfsp/winfsp/releases/download/v2.0/winfsp-2.0.23075.msi"
+          $expectedSha256 = "6324DC81194A6A08F97B6AECA303CF5C2325C53EDE153BAE9FC4378F0838C101"
           $output = "$env:TEMP\winfsp.msi"
           Invoke-WebRequest -Uri $url -OutFile $output
+          $actualSha256 = (Get-FileHash $output -Algorithm SHA256).Hash
+          if ($actualSha256 -ne $expectedSha256) {
+            Remove-Item $output -Force
+            throw "WinFsp checksum mismatch: expected $expectedSha256, got $actualSha256"
+          }
           Start-Process msiexec.exe -ArgumentList "/i", $output, "/quiet", "/norestart", "ADDLOCAL=ALL" -Wait
+          # Verify installation
+          if (Test-Path "C:\Program Files (x86)\WinFsp\inc\winfsp\winfsp.h") {
+            Write-Host "WinFsp SDK headers found"
+          } else {
+            Write-Host "WinFsp SDK headers NOT found"
+            exit 1
+          }
         shell: pwsh
 
       - name: Install dependencies
