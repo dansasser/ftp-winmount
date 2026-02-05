@@ -1,7 +1,7 @@
 # Instructions for Windows Agent
 
 ## Context
-This project, **PyFTPDrive**, has been scaffolded in a Linux environment. The directory structure, configuration files, and code skeletons are in place. However, the core logic relies on `winfspy` (WinFsp), which is Windows-specific.
+This project, **FTP-WinMount**, has been scaffolded in a Linux environment. The directory structure, configuration files, and code skeletons are in place. However, the core logic relies on `winfspy` (WinFsp), which is Windows-specific.
 
 Your task is to implement the logic within the provided skeletons.
 

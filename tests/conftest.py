@@ -1,5 +1,5 @@
 """
-Shared pytest fixtures for PyFTPDrive tests.
+Shared pytest fixtures for FTP-WinMount tests.
 """
 
 import ftplib

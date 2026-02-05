@@ -64,7 +64,7 @@ def main():
     drive = sys.argv[1] if len(sys.argv) > 1 else "Z:"
     iterations = int(sys.argv[2]) if len(sys.argv) > 2 else 100
 
-    print("Memory Leak Test for PyFTPDrive")
+    print("Memory Leak Test for FTP-WinMount")
     print(f"Drive: {drive}")
     print(f"Iterations per test: {iterations}")
     print("-" * 50)

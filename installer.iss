@@ -2,7 +2,7 @@
 ; Build with: iscc installer.iss
 
 #define MyAppName "FTP-WinMount"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "0.1.1"
 #define MyAppPublisher "Daniel T Sasser II"
 #define MyAppURL "https://github.com/dansasser/ftp-winmount"
 #define MyAppExeName "ftp-winmount.exe"
@@ -51,9 +51,9 @@ const
   WM_SETTINGCHANGE = $001A;
   SMTO_ABORTIFHUNG = $0002;
 
-function SendMessageTimeoutW(hWnd: HWND; Msg: UINT; wParam: WPARAM;
-  lParam: PAnsiChar; fuFlags: UINT; uTimeout: UINT;
-  var lpdwResult: DWORD): LRESULT;
+function SendMessageTimeoutW(hWnd: Longint; Msg: Cardinal; wParam: Longint;
+  lParam: PAnsiChar; fuFlags: Cardinal; uTimeout: Cardinal;
+  var lpdwResult: Cardinal): Longint;
   external 'SendMessageTimeoutW@user32.dll stdcall';
 
 function NeedsAddPath(Param: string): boolean;
@@ -72,7 +72,7 @@ end;
 
 procedure BroadcastEnvironmentChange();
 var
-  Dummy: DWORD;
+  Dummy: Cardinal;
 begin
   // Notify Windows that environment variables changed
   // This broadcasts WM_SETTINGCHANGE so new terminals pick up PATH change

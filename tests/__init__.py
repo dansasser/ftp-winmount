@@ -1,1 +1,1 @@
-# PyFTPDrive Test Suite
+# FTP-WinMount Test Suite
