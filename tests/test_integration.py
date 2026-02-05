@@ -1,5 +1,5 @@
 """
-Integration tests for PyFTPDrive using pyftpdlib as a real FTP server.
+Integration tests for FTP-WinMount using pyftpdlib as a real FTP server.
 
 These tests verify the full stack (FTPClient + FTPFileSystem + Cache) against
 a real FTP server running in-process. This catches issues that unit tests with

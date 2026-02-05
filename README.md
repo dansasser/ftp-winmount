@@ -1,4 +1,4 @@
-# PyFTPDrive
+# FTP-WinMount
 
 [![PyPI version](https://badge.fury.io/py/ftp-winmount.svg)](https://badge.fury.io/py/ftp-winmount)
 [![CI](https://github.com/dansasser/ftp-winmount/actions/workflows/ci.yml/badge.svg)](https://github.com/dansasser/ftp-winmount/actions/workflows/ci.yml)
@@ -62,7 +62,7 @@ If you don't want to install:
 
 ### Windows Dependencies
 
-PyFTPDrive requires **WinFsp** (Windows File System Proxy) - a free, open-source file system driver that enables user-mode filesystems on Windows.
+FTP-WinMount requires **WinFsp** (Windows File System Proxy) - a free, open-source file system driver that enables user-mode filesystems on Windows.
 
 | Dependency | Version | Required | Download |
 |------------|---------|----------|----------|
