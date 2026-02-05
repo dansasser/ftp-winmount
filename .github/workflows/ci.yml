@@ -114,6 +114,13 @@ jobs:
           $output = "$env:TEMP\winfsp.msi"
           Invoke-WebRequest -Uri $url -OutFile $output
           Start-Process msiexec.exe -ArgumentList "/i", $output, "/quiet", "/norestart", "ADDLOCAL=ALL" -Wait
+          # Verify installation
+          if (Test-Path "C:\Program Files (x86)\WinFsp\inc\winfsp\winfsp.h") {
+            Write-Host "WinFsp SDK headers found"
+          } else {
+            Write-Host "WinFsp SDK headers NOT found"
+            exit 1
+          }
         shell: pwsh
 
       - name: Install dependencies
