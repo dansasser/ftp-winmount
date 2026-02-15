@@ -84,6 +84,7 @@ from typing import Any
 
 from .cache import DirectoryCache, MetadataCache
 from .ftp_client import FileStats, FTPClient
+from .remote_client import RemoteClient
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +162,7 @@ FileContext = OpenedContext
 class FTPFileSystem(BaseFileSystemOperations):
     """WinFsp Filesystem implementation that backs to an FTP server."""
 
-    def __init__(self, ftp_client: FTPClient, cache_config):
+    def __init__(self, ftp_client: RemoteClient, cache_config):
         super().__init__()
         self._thread_lock = threading.Lock()
         self.ftp = ftp_client

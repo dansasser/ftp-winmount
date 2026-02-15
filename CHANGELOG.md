@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-02-15
+
+### Added
+
+- **SFTP (SSH) protocol support** - Mount SSH/SFTP servers as Windows drive letters
+  - SSH key file authentication (RSA, ECDSA, Ed25519)
+  - Passphrase-protected key support (`--key-passphrase`)
+  - Password authentication
+  - SSH agent forwarding
+  - Trust-on-first-use host key policy (auto-add unknown hosts)
+- New CLI options:
+  - `--protocol` (ftp, ftps, sftp) - select connection protocol
+  - `--key-file` - path to SSH private key
+  - `--key-passphrase` - passphrase for encrypted SSH keys
+- `RemoteClient` Protocol abstraction - enables FTPClient and SFTPClient to be used interchangeably
+- SFTP configuration via INI file (`[general]` protocol and `[ssh]` section)
+- 67 new tests covering SFTP client, protocol compliance, and SSH config parsing
+
+### Dependencies
+
+- Added `paramiko>=3.0.0` for SSH/SFTP support
+
 ## [0.1.1] - 2026-02-05
 
 ### Fixed

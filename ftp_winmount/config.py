@@ -15,6 +15,18 @@ class FTPConfig:
 
 
 @dataclass
+class SSHConfig:
+    host: str
+    port: int = 22
+    username: str | None = None
+    password: str | None = None
+    key_file: str | None = None  # Path to SSH private key
+    key_passphrase: str | None = None  # Passphrase for encrypted keys
+    use_agent: bool = True  # Try SSH agent for auth
+    encoding: str = "utf-8"
+
+
+@dataclass
 class MountConfig:
     drive_letter: str
     volume_label: str = "FTP Drive"
@@ -49,6 +61,8 @@ class AppConfig:
     cache: CacheConfig
     connection: ConnectionConfig
     logging: LogConfig
+    protocol: str = "ftp"  # "ftp", "ftps", or "sftp"
+    ssh: SSHConfig | None = None
 
 
 def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
@@ -97,6 +111,17 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
         "file": "ftp-winmount.log",
         "console": True,
     }
+    ssh_config = {
+        "host": None,
+        "port": 22,
+        "username": None,
+        "password": None,
+        "key_file": None,
+        "key_passphrase": None,
+        "use_agent": True,
+        "encoding": "utf-8",
+    }
+    protocol = "ftp"
 
     # Parse INI file if provided
     if config_path is not None:
@@ -224,27 +249,82 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
                     "yes",
                 )
 
+        # Load [ssh] section
+        if parser.has_section("ssh"):
+            ssh_section = parser["ssh"]
+            if ssh_section.get("host"):
+                ssh_config["host"] = ssh_section.get("host")
+            if ssh_section.get("port"):
+                try:
+                    ssh_config["port"] = int(ssh_section.get("port"))
+                except ValueError:
+                    raise ValueError(
+                        f"Invalid SSH port value in config: '{ssh_section.get('port')}' - must be an integer"
+                    )
+            if ssh_section.get("username"):
+                ssh_config["username"] = ssh_section.get("username") or None
+            if ssh_section.get("password"):
+                ssh_config["password"] = ssh_section.get("password") or None
+            if ssh_section.get("key_file"):
+                ssh_config["key_file"] = ssh_section.get("key_file") or None
+            if ssh_section.get("key_passphrase"):
+                ssh_config["key_passphrase"] = ssh_section.get("key_passphrase") or None
+            if ssh_section.get("use_agent"):
+                ssh_config["use_agent"] = ssh_section.get("use_agent", "true").lower() in (
+                    "true",
+                    "1",
+                    "yes",
+                )
+            if ssh_section.get("encoding"):
+                ssh_config["encoding"] = ssh_section.get("encoding")
+
+        # Load protocol from config (can be in [general] or [ftp] section)
+        if parser.has_section("general") and parser["general"].get("protocol"):
+            protocol = parser["general"]["protocol"].lower()
+
     # Override with CLI arguments (cli_args take precedence)
+    if cli_args.get("protocol") is not None:
+        protocol = cli_args["protocol"].lower()
+    if cli_args.get("secure") is not None and cli_args["secure"]:
+        protocol = "ftps"
     if cli_args.get("host") is not None:
-        ftp_config["host"] = cli_args["host"]
+        if protocol == "sftp":
+            ssh_config["host"] = cli_args["host"]
+        else:
+            ftp_config["host"] = cli_args["host"]
     if cli_args.get("port") is not None:
-        ftp_config["port"] = int(cli_args["port"])
+        if protocol == "sftp":
+            ssh_config["port"] = int(cli_args["port"])
+        else:
+            ftp_config["port"] = int(cli_args["port"])
     if cli_args.get("username") is not None:
-        ftp_config["username"] = cli_args["username"] or None
+        if protocol == "sftp":
+            ssh_config["username"] = cli_args["username"] or None
+        else:
+            ftp_config["username"] = cli_args["username"] or None
     if cli_args.get("password") is not None:
-        ftp_config["password"] = cli_args["password"] or None
+        if protocol == "sftp":
+            ssh_config["password"] = cli_args["password"] or None
+        else:
+            ftp_config["password"] = cli_args["password"] or None
     if cli_args.get("drive_letter") is not None:
         mount_config["drive_letter"] = cli_args["drive_letter"]
-    if cli_args.get("secure") is not None:
-        ftp_config["secure"] = cli_args["secure"]
+    if cli_args.get("key_file") is not None:
+        ssh_config["key_file"] = cli_args["key_file"]
+    if cli_args.get("key_passphrase") is not None:
+        ssh_config["key_passphrase"] = cli_args["key_passphrase"]
     if cli_args.get("debug"):
         log_config["level"] = "DEBUG"
         log_config["console"] = True
 
     # Validate required fields
     missing_fields = []
-    if not ftp_config["host"]:
-        missing_fields.append("host")
+    if protocol == "sftp":
+        if not ssh_config["host"]:
+            missing_fields.append("host")
+    else:
+        if not ftp_config["host"]:
+            missing_fields.append("host")
     if not mount_config["drive_letter"]:
         missing_fields.append("drive_letter")
 
@@ -259,10 +339,29 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
         )
     mount_config["drive_letter"] = drive_letter
 
+    # Handle protocol normalization (ftps sets secure flag on FTP)
+    if protocol == "ftps":
+        ftp_config["secure"] = True
+        protocol = "ftp"  # FTPS uses FTPClient with secure=True
+
+    # Build SSH config object if needed
+    ssh_obj = None
+    if protocol == "sftp" and ssh_config["host"]:
+        ssh_obj = SSHConfig(
+            host=ssh_config["host"],
+            port=ssh_config["port"],
+            username=ssh_config["username"],
+            password=ssh_config["password"],
+            key_file=ssh_config["key_file"],
+            key_passphrase=ssh_config["key_passphrase"],
+            use_agent=ssh_config["use_agent"],
+            encoding=ssh_config["encoding"],
+        )
+
     # Build and return AppConfig
     return AppConfig(
         ftp=FTPConfig(
-            host=ftp_config["host"],
+            host=ftp_config["host"] or "",
             port=ftp_config["port"],
             username=ftp_config["username"],
             password=ftp_config["password"],
@@ -290,4 +389,6 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
             file=log_config["file"],
             console=log_config["console"],
         ),
+        protocol=protocol,
+        ssh=ssh_obj,
     )

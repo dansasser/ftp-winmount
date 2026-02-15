@@ -2,13 +2,14 @@ from setuptools import find_packages, setup
 
 setup(
     name="ftp-winmount",
-    version="0.1.0",
-    description="Mount FTP server as a local Windows drive",
+    version="0.2.0",
+    description="Mount FTP or SFTP server as a local Windows drive",
     author="Daniel T Sasser II",
     packages=find_packages(),
     install_requires=[
         "winfspy>=0.8.0",
         "cachetools>=5.0.0",
+        "paramiko>=3.0.0",
     ],
     entry_points={
         "console_scripts": [
