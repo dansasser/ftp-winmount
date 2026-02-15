@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Windows](https://img.shields.io/badge/platform-Windows-blue.svg)](https://www.microsoft.com/windows)
 
-Mount any FTP server as a local Windows drive. No sync, no ads, no telemetry.
+Mount any FTP or SFTP server as a local Windows drive. No sync, no ads, no telemetry.
 
 ---
 
@@ -53,10 +53,12 @@ If you don't want to install:
 
 ## Features
 
-- Mount FTP server as a Windows drive letter (Z:, Y:, etc.)
+- Mount FTP or SFTP server as a Windows drive letter (Z:, Y:, etc.)
 - Full read/write support
+- SSH key authentication (RSA, ECDSA, Ed25519), password, and SSH agent support
 - Works with any application (VS Code, File Explorer, Notepad, etc.)
 - Anonymous or authenticated FTP
+- FTPS (FTP over TLS) support
 - Auto-reconnect on connection drop
 - Lightweight, no background services when not in use
 - Open source, no ads, no tracking
@@ -166,7 +168,12 @@ Mount an anonymous FTP server:
 ftp-winmount mount --host 192.168.0.130 --port 2121 --drive Z
 ```
 
-Your FTP server is now accessible at `Z:\`
+Mount an SFTP server with SSH key:
+```bash
+ftp-winmount mount --protocol sftp --host myserver.com --key-file ~/.ssh/id_rsa --drive Z
+```
+
+Your remote server is now accessible at `Z:\`
 
 To unmount:
 ```bash
@@ -180,6 +187,8 @@ Or just press `Ctrl+C` in the terminal.
 ## Usage
 
 ### Command Line
+
+**FTP:**
 ```bash
 # Mount with minimal options
 ftp-winmount mount --host 192.168.0.130 --drive Z
@@ -190,6 +199,27 @@ ftp-winmount mount --host 192.168.0.130 --port 2121 --drive Z
 # Mount with authentication
 ftp-winmount mount --host ftp.example.com --user myuser --password mypass --drive Z
 
+# Mount with FTPS (FTP over TLS)
+ftp-winmount mount --protocol ftps --host ftp.example.com --drive Z
+```
+
+**SFTP (SSH):**
+```bash
+# Mount with SSH key file
+ftp-winmount mount --protocol sftp --host myserver.com --key-file ~/.ssh/id_rsa --drive Z
+
+# Mount with SSH key + custom port and username
+ftp-winmount mount --protocol sftp --host myserver.com --port 2222 --user deploy --key-file ~/.ssh/id_ed25519 --drive Z
+
+# Mount with SSH key that has a passphrase
+ftp-winmount mount --protocol sftp --host myserver.com --key-file ~/.ssh/id_rsa --key-passphrase "my passphrase" --drive Z
+
+# Mount with SSH password auth
+ftp-winmount mount --protocol sftp --host myserver.com --user myuser --password mypass --drive Z
+```
+
+**General:**
+```bash
 # Mount with config file
 ftp-winmount mount --config config.ini
 
@@ -202,7 +232,7 @@ ftp-winmount unmount --drive Z
 
 ### Configuration File
 
-Create `config.ini`:
+Create `config.ini` for FTP:
 ```ini
 [ftp]
 host = 192.168.0.130
@@ -213,6 +243,29 @@ password =
 [mount]
 drive_letter = Z
 volume_label = My FTP Drive
+
+[cache]
+directory_ttl_seconds = 30
+
+[logging]
+level = INFO
+file = ftp-winmount.log
+```
+
+Or for SFTP:
+```ini
+[general]
+protocol = sftp
+
+[ssh]
+host = myserver.com
+port = 22
+username = deploy
+key_file = ~/.ssh/id_ed25519
+
+[mount]
+drive_letter = Z
+volume_label = My SSH Drive
 
 [cache]
 directory_ttl_seconds = 30
@@ -266,11 +319,15 @@ ftp-winmount mount --host SERVER_IP --port 2121 --drive Z
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--host` | FTP server hostname or IP | Required |
-| `--port` | FTP server port | 21 |
+| `--host` | Server hostname or IP | Required |
+| `--port` | Server port | 21 (FTP) / 22 (SFTP) |
 | `--drive` | Drive letter to mount | Required |
-| `--user` | FTP username | Anonymous |
-| `--password` | FTP password | None |
+| `--protocol` | Protocol: `ftp`, `ftps`, or `sftp` | `ftp` |
+| `--user` | Username | Anonymous (FTP) |
+| `--password` | Password | None |
+| `--key-file` | Path to SSH private key (SFTP only) | None |
+| `--key-passphrase` | Passphrase for encrypted SSH key | None |
+| `--secure` | Use FTPS (FTP over TLS) | False |
 | `--config` | Path to config file | None |
 | `--verbose` | Enable debug logging | False |
 
@@ -304,6 +361,15 @@ net use Z: /delete
 
 - For anonymous FTP, ensure the server allows anonymous access
 - For authenticated FTP, check username and password
+- For SFTP, check your SSH key file path and permissions
+- For SFTP with passphrase-protected keys, use `--key-passphrase`
+
+### "SSH authentication failed"
+
+- Verify the key file path is correct and the file exists
+- If using a passphrase-protected key, provide it with `--key-passphrase`
+- Try connecting with `ssh user@host` to verify the key works
+- Check that the server allows key-based authentication
 
 ### Files appear but can't be read
 
@@ -329,7 +395,7 @@ net use Z: /delete
 - **Windows only** - This tool uses WinFsp which is Windows-specific
 - FTP protocol does not support file locking. Concurrent writes from multiple clients may cause issues.
 - Some FTP servers don't report accurate file sizes or timestamps.
-- Very large files (>1GB) may be slow due to FTP protocol limitations.
+- Very large files (>1GB) may be slow due to FTP protocol overhead (SFTP handles large files better).
 
 ---
 
@@ -389,6 +455,7 @@ MIT License. See [LICENSE](LICENSE) file.
 
 - [WinFsp](https://winfsp.dev/) - Windows File System Proxy
 - [winfspy](https://github.com/Scille/winfspy) - Python bindings for WinFsp
+- [paramiko](https://www.paramiko.org/) - Python SSH/SFTP library
 
 ---
 

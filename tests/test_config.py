@@ -21,6 +21,7 @@ from ftp_winmount.config import (
     FTPConfig,
     LogConfig,
     MountConfig,
+    SSHConfig,
     load_config,
 )
 
@@ -406,3 +407,142 @@ retry_attempts = 10
         assert config.cache.metadata_ttl_seconds == 200
         assert config.connection.timeout_seconds == 60
         assert config.connection.retry_attempts == 10
+
+
+class TestSSHConfig:
+    """Tests for SSH/SFTP configuration loading."""
+
+    def test_sftp_protocol_via_cli(self):
+        """Test SFTP protocol selection via CLI args."""
+        config = load_config(
+            config_path=None,
+            protocol="sftp",
+            host="ssh.server.com",
+            drive_letter="Z",
+        )
+
+        assert config.protocol == "sftp"
+        assert config.ssh is not None
+        assert config.ssh.host == "ssh.server.com"
+
+    def test_sftp_with_key_file(self):
+        """Test SFTP config with key file."""
+        config = load_config(
+            config_path=None,
+            protocol="sftp",
+            host="ssh.server.com",
+            drive_letter="Z",
+            key_file="~/.ssh/id_rsa",
+        )
+
+        assert config.ssh.key_file == "~/.ssh/id_rsa"
+
+    def test_sftp_with_key_passphrase(self):
+        """Test SFTP config with key passphrase."""
+        config = load_config(
+            config_path=None,
+            protocol="sftp",
+            host="ssh.server.com",
+            drive_letter="Z",
+            key_file="~/.ssh/id_rsa",
+            key_passphrase="mypassphrase",
+        )
+
+        assert config.ssh.key_passphrase == "mypassphrase"
+
+    def test_sftp_with_username_and_password(self):
+        """Test SFTP config with username and password auth."""
+        config = load_config(
+            config_path=None,
+            protocol="sftp",
+            host="ssh.server.com",
+            username="sshuser",
+            password="sshpass",
+            drive_letter="Z",
+        )
+
+        assert config.ssh.username == "sshuser"
+        assert config.ssh.password == "sshpass"
+
+    def test_sftp_with_port(self):
+        """Test SFTP config with custom port."""
+        config = load_config(
+            config_path=None,
+            protocol="sftp",
+            host="ssh.server.com",
+            port=2222,
+            drive_letter="Z",
+        )
+
+        assert config.ssh.port == 2222
+
+    def test_sftp_missing_host_raises_valueerror(self):
+        """Test that SFTP without host raises ValueError."""
+        with pytest.raises(ValueError, match="host"):
+            load_config(
+                config_path=None,
+                protocol="sftp",
+                drive_letter="Z",
+            )
+
+    def test_sftp_from_ini_file(self, tmp_path: Path):
+        """Test loading SFTP config from INI file."""
+        config_content = """[general]
+protocol = sftp
+
+[ssh]
+host = ini.ssh.server.com
+port = 2222
+username = iniuser
+key_file = ~/.ssh/id_ed25519
+
+[mount]
+drive_letter = Y
+"""
+        config_path = tmp_path / "sftp_config.ini"
+        config_path.write_text(config_content, encoding="utf-8")
+
+        config = load_config(str(config_path))
+
+        assert config.protocol == "sftp"
+        assert config.ssh is not None
+        assert config.ssh.host == "ini.ssh.server.com"
+        assert config.ssh.port == 2222
+        assert config.ssh.username == "iniuser"
+        assert config.ssh.key_file == "~/.ssh/id_ed25519"
+
+    def test_ftps_protocol_sets_secure_flag(self):
+        """Test that ftps protocol sets secure=True on FTP config."""
+        config = load_config(
+            config_path=None,
+            protocol="ftps",
+            host="ftps.server.com",
+            drive_letter="Z",
+        )
+
+        # ftps gets normalized to ftp with secure=True
+        assert config.protocol == "ftp"
+        assert config.ftp.secure is True
+
+    def test_default_protocol_is_ftp(self):
+        """Test that default protocol is ftp."""
+        config = load_config(
+            config_path=None,
+            host="test.server.com",
+            drive_letter="Z",
+        )
+
+        assert config.protocol == "ftp"
+        assert config.ssh is None
+
+    def test_ssh_config_dataclass_defaults(self):
+        """Test SSHConfig default values."""
+        config = SSHConfig(host="test.com")
+
+        assert config.port == 22
+        assert config.username is None
+        assert config.password is None
+        assert config.key_file is None
+        assert config.key_passphrase is None
+        assert config.use_agent is True
+        assert config.encoding == "utf-8"
