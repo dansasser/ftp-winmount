@@ -6,6 +6,7 @@ ensuring they can be used interchangeably by FTPFileSystem.
 """
 
 from ftp_winmount.ftp_client import FTPClient
+from ftp_winmount.gdrive_client import GoogleDriveClient
 from ftp_winmount.remote_client import RemoteClient
 from ftp_winmount.sftp_client import SFTPClient
 
@@ -64,4 +65,27 @@ class TestRemoteClientProtocol:
     def test_runtime_checkable_sftp(self, ssh_config, conn_config):
         """SFTPClient instance passes runtime isinstance check."""
         client = SFTPClient(ssh_config, conn_config)
+        assert isinstance(client, RemoteClient)
+
+    def test_gdrive_client_is_remote_client(self):
+        """GoogleDriveClient should satisfy the RemoteClient protocol."""
+        required_methods = [
+            "connect",
+            "disconnect",
+            "list_dir",
+            "get_file_info",
+            "read_file",
+            "write_file",
+            "create_file",
+            "create_dir",
+            "delete_file",
+            "delete_dir",
+            "rename",
+        ]
+        for method in required_methods:
+            assert hasattr(GoogleDriveClient, method), f"GoogleDriveClient missing method: {method}"
+
+    def test_runtime_checkable_gdrive(self, gdrive_config, conn_config):
+        """GoogleDriveClient instance passes runtime isinstance check."""
+        client = GoogleDriveClient(gdrive_config, conn_config)
         assert isinstance(client, RemoteClient)

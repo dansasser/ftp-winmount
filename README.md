@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Windows](https://img.shields.io/badge/platform-Windows-blue.svg)](https://www.microsoft.com/windows)
 
-Mount any FTP or SFTP server as a local Windows drive. No sync, no ads, no telemetry.
+Mount FTP, SFTP, or Google Drive as a local Windows drive. No sync, no ads, no telemetry.
 
 ---
 
@@ -53,9 +53,10 @@ If you don't want to install:
 
 ## Features
 
-- Mount FTP or SFTP server as a Windows drive letter (Z:, Y:, etc.)
+- Mount FTP, SFTP, or Google Drive as a Windows drive letter (Z:, Y:, etc.)
 - Full read/write support
 - SSH key authentication (RSA, ECDSA, Ed25519), password, and SSH agent support
+- Google Drive with OAuth 2.0, shared drives, and Workspace file export
 - Works with any application (VS Code, File Explorer, Notepad, etc.)
 - Anonymous or authenticated FTP
 - FTPS (FTP over TLS) support
@@ -173,7 +174,16 @@ Mount an SFTP server with SSH key:
 ftp-winmount mount --protocol sftp --host myserver.com --key-file ~/.ssh/id_rsa --drive Z
 ```
 
-Your remote server is now accessible at `Z:\`
+Mount Google Drive:
+```bash
+# First time: authenticate with Google
+ftp-winmount auth google --client-secrets path/to/client_secrets.json
+
+# Then mount
+ftp-winmount mount --protocol gdrive --drive G
+```
+
+Your remote server is now accessible at `Z:\` (or `G:\` for Google Drive)
 
 To unmount:
 ```bash
@@ -216,6 +226,21 @@ ftp-winmount mount --protocol sftp --host myserver.com --key-file ~/.ssh/id_rsa 
 
 # Mount with SSH password auth
 ftp-winmount mount --protocol sftp --host myserver.com --user myuser --password mypass --drive Z
+```
+
+**Google Drive:**
+```bash
+# Step 1: Authenticate (one-time setup, opens browser)
+ftp-winmount auth google --client-secrets path/to/client_secrets.json
+
+# Step 2: Mount your Drive
+ftp-winmount mount --protocol gdrive --drive G
+
+# Mount a specific folder
+ftp-winmount mount --protocol gdrive --root-folder FOLDER_ID_HERE --drive G
+
+# Mount a shared/team drive
+ftp-winmount mount --protocol gdrive --shared-drive "Engineering" --drive G
 ```
 
 **General:**
@@ -275,6 +300,24 @@ level = INFO
 file = ftp-winmount.log
 ```
 
+Or for Google Drive:
+```ini
+[general]
+protocol = gdrive
+
+[gdrive]
+client_secrets_file = /path/to/client_secrets.json
+# shared_drive = Engineering
+
+[mount]
+drive_letter = G
+volume_label = My Google Drive
+
+[logging]
+level = INFO
+file = ftp-winmount.log
+```
+
 Then run:
 ```bash
 ftp-winmount mount --config config.ini
@@ -319,17 +362,53 @@ ftp-winmount mount --host SERVER_IP --port 2121 --drive Z
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--host` | Server hostname or IP | Required |
+| `--host` | Server hostname or IP | Required (FTP/SFTP) |
 | `--port` | Server port | 21 (FTP) / 22 (SFTP) |
 | `--drive` | Drive letter to mount | Required |
-| `--protocol` | Protocol: `ftp`, `ftps`, or `sftp` | `ftp` |
+| `--protocol` | Protocol: `ftp`, `ftps`, `sftp`, or `gdrive` | `ftp` |
 | `--user` | Username | Anonymous (FTP) |
 | `--password` | Password | None |
 | `--key-file` | Path to SSH private key (SFTP only) | None |
 | `--key-passphrase` | Passphrase for encrypted SSH key | None |
+| `--client-secrets` | Path to Google OAuth client_secrets.json | None |
+| `--root-folder` | Google Drive folder ID to mount | root |
+| `--shared-drive` | Name or ID of shared/team drive | None |
 | `--secure` | Use FTPS (FTP over TLS) | False |
 | `--config` | Path to config file | None |
 | `--verbose` | Enable debug logging | False |
+
+---
+
+## Google Drive Setup
+
+Google Drive requires a one-time OAuth setup. You need to create your own Google Cloud credentials:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a project (or select existing)
+3. Enable the **Google Drive API** (APIs & Services -> Library)
+4. Create OAuth credentials (APIs & Services -> Credentials -> Create Credentials -> OAuth client ID)
+   - Application type: **Desktop app**
+   - Download the `client_secrets.json` file
+5. Run the auth command:
+   ```bash
+   ftp-winmount auth google --client-secrets path/to/client_secrets.json
+   ```
+6. A browser window opens for Google authorization
+7. After authorizing, your token is saved to `~/.ftp-winmount/gdrive-token.json`
+8. Now you can mount:
+   ```bash
+   ftp-winmount mount --protocol gdrive --drive G
+   ```
+
+The token persists across sessions and auto-refreshes. You only need to re-authorize if you revoke access.
+
+**Google Workspace files** (Docs, Sheets, Slides, Drawings) appear as read-only exports:
+- Google Docs -> `.docx`
+- Google Sheets -> `.xlsx`
+- Google Slides -> `.pptx`
+- Google Drawings -> `.pdf`
+
+Non-exportable Workspace files (Forms, Maps, Sites) are hidden from listings.
 
 ---
 
@@ -456,6 +535,7 @@ MIT License. See [LICENSE](LICENSE) file.
 - [WinFsp](https://winfsp.dev/) - Windows File System Proxy
 - [winfspy](https://github.com/Scille/winfspy) - Python bindings for WinFsp
 - [paramiko](https://www.paramiko.org/) - Python SSH/SFTP library
+- [Google API Python Client](https://github.com/googleapis/google-api-python-client) - Google Drive API
 
 ---
 

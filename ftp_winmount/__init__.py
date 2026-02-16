@@ -7,6 +7,7 @@ from .config import (
     CacheConfig,
     ConnectionConfig,
     FTPConfig,
+    GoogleDriveConfig,
     LogConfig,
     MountConfig,
     SSHConfig,
@@ -14,6 +15,7 @@ from .config import (
 )
 from .filesystem import FTPFileSystem
 from .ftp_client import FileStats, FTPClient
+from .gdrive_client import GoogleDriveClient
 from .remote_client import RemoteClient
 from .sftp_client import SFTPClient
 
@@ -23,6 +25,7 @@ __all__ = [
     "AppConfig",
     "FTPConfig",
     "SSHConfig",
+    "GoogleDriveConfig",
     "MountConfig",
     "CacheConfig",
     "ConnectionConfig",
@@ -32,6 +35,7 @@ __all__ = [
     "RemoteClient",
     "FTPClient",
     "SFTPClient",
+    "GoogleDriveClient",
     "FileStats",
     # Cache
     "DirectoryCache",

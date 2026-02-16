@@ -27,6 +27,14 @@ class SSHConfig:
 
 
 @dataclass
+class GoogleDriveConfig:
+    client_secrets_file: str | None = None  # Path to client_secrets.json
+    token_file: str | None = None  # Path to saved OAuth token
+    root_folder_id: str = "root"  # Mount a specific folder instead of root
+    shared_drive: str | None = None  # Name or ID of shared/team drive
+
+
+@dataclass
 class MountConfig:
     drive_letter: str
     volume_label: str = "FTP Drive"
@@ -61,8 +69,9 @@ class AppConfig:
     cache: CacheConfig
     connection: ConnectionConfig
     logging: LogConfig
-    protocol: str = "ftp"  # "ftp", "ftps", or "sftp"
+    protocol: str = "ftp"  # "ftp", "ftps", "sftp", or "gdrive"
     ssh: SSHConfig | None = None
+    gdrive: GoogleDriveConfig | None = None
 
 
 def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
@@ -120,6 +129,12 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
         "key_passphrase": None,
         "use_agent": True,
         "encoding": "utf-8",
+    }
+    gdrive_config = {
+        "client_secrets_file": None,
+        "token_file": None,
+        "root_folder_id": "root",
+        "shared_drive": None,
     }
     protocol = "ftp"
 
@@ -278,6 +293,18 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
             if ssh_section.get("encoding"):
                 ssh_config["encoding"] = ssh_section.get("encoding")
 
+        # Load [gdrive] section
+        if parser.has_section("gdrive"):
+            gdrive_section = parser["gdrive"]
+            if gdrive_section.get("client_secrets_file"):
+                gdrive_config["client_secrets_file"] = gdrive_section.get("client_secrets_file")
+            if gdrive_section.get("token_file"):
+                gdrive_config["token_file"] = gdrive_section.get("token_file")
+            if gdrive_section.get("root_folder_id"):
+                gdrive_config["root_folder_id"] = gdrive_section.get("root_folder_id")
+            if gdrive_section.get("shared_drive"):
+                gdrive_config["shared_drive"] = gdrive_section.get("shared_drive")
+
         # Load protocol from config (can be in [general] or [ftp] section)
         if parser.has_section("general") and parser["general"].get("protocol"):
             protocol = parser["general"]["protocol"].lower()
@@ -313,13 +340,22 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
         ssh_config["key_file"] = cli_args["key_file"]
     if cli_args.get("key_passphrase") is not None:
         ssh_config["key_passphrase"] = cli_args["key_passphrase"]
+    if cli_args.get("client_secrets") is not None:
+        gdrive_config["client_secrets_file"] = cli_args["client_secrets"]
+    if cli_args.get("root_folder") is not None:
+        gdrive_config["root_folder_id"] = cli_args["root_folder"]
+    if cli_args.get("shared_drive") is not None:
+        gdrive_config["shared_drive"] = cli_args["shared_drive"]
     if cli_args.get("debug"):
         log_config["level"] = "DEBUG"
         log_config["console"] = True
 
     # Validate required fields
     missing_fields = []
-    if protocol == "sftp":
+    if protocol == "gdrive":
+        # Google Drive doesn't need host, but needs drive letter
+        pass
+    elif protocol == "sftp":
         if not ssh_config["host"]:
             missing_fields.append("host")
     else:
@@ -358,6 +394,16 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
             encoding=ssh_config["encoding"],
         )
 
+    # Build Google Drive config object if needed
+    gdrive_obj = None
+    if protocol == "gdrive":
+        gdrive_obj = GoogleDriveConfig(
+            client_secrets_file=gdrive_config["client_secrets_file"],
+            token_file=gdrive_config["token_file"],
+            root_folder_id=gdrive_config["root_folder_id"],
+            shared_drive=gdrive_config["shared_drive"],
+        )
+
     # Build and return AppConfig
     return AppConfig(
         ftp=FTPConfig(
@@ -391,4 +437,5 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
         ),
         protocol=protocol,
         ssh=ssh_obj,
+        gdrive=gdrive_obj,
     )

@@ -19,6 +19,7 @@ from ftp_winmount.config import (
     CacheConfig,
     ConnectionConfig,
     FTPConfig,
+    GoogleDriveConfig,
     LogConfig,
     MountConfig,
     SSHConfig,
@@ -546,3 +547,126 @@ drive_letter = Y
         assert config.key_passphrase is None
         assert config.use_agent is True
         assert config.encoding == "utf-8"
+
+
+class TestGoogleDriveConfig:
+    """Tests for Google Drive configuration loading."""
+
+    def test_gdrive_protocol_via_cli(self):
+        """Test gdrive protocol selection via CLI args."""
+        config = load_config(
+            config_path=None,
+            protocol="gdrive",
+            drive_letter="Z",
+        )
+
+        assert config.protocol == "gdrive"
+        assert config.gdrive is not None
+
+    def test_gdrive_does_not_require_host(self):
+        """Test that gdrive protocol does not require host."""
+        config = load_config(
+            config_path=None,
+            protocol="gdrive",
+            drive_letter="Z",
+        )
+
+        assert config.protocol == "gdrive"
+        # Should not raise ValueError for missing host
+
+    def test_gdrive_still_requires_drive_letter(self):
+        """Test that gdrive protocol still requires drive_letter."""
+        with pytest.raises(ValueError, match="drive_letter"):
+            load_config(
+                config_path=None,
+                protocol="gdrive",
+            )
+
+    def test_gdrive_with_client_secrets_cli(self):
+        """Test gdrive config with client_secrets from CLI."""
+        config = load_config(
+            config_path=None,
+            protocol="gdrive",
+            drive_letter="Z",
+            client_secrets="/path/to/secrets.json",
+        )
+
+        assert config.gdrive.client_secrets_file == "/path/to/secrets.json"
+
+    def test_gdrive_with_root_folder_cli(self):
+        """Test gdrive config with root_folder from CLI."""
+        config = load_config(
+            config_path=None,
+            protocol="gdrive",
+            drive_letter="Z",
+            root_folder="folder_id_123",
+        )
+
+        assert config.gdrive.root_folder_id == "folder_id_123"
+
+    def test_gdrive_with_shared_drive_cli(self):
+        """Test gdrive config with shared_drive from CLI."""
+        config = load_config(
+            config_path=None,
+            protocol="gdrive",
+            drive_letter="Z",
+            shared_drive="Team Drive",
+        )
+
+        assert config.gdrive.shared_drive == "Team Drive"
+
+    def test_gdrive_from_ini_file(self, tmp_path: Path):
+        """Test loading gdrive config from INI file."""
+        config_content = """[general]
+protocol = gdrive
+
+[gdrive]
+client_secrets_file = /opt/secrets.json
+token_file = /opt/token.json
+root_folder_id = abc123
+shared_drive = Engineering
+
+[mount]
+drive_letter = G
+"""
+        config_path = tmp_path / "gdrive_config.ini"
+        config_path.write_text(config_content, encoding="utf-8")
+
+        config = load_config(str(config_path))
+
+        assert config.protocol == "gdrive"
+        assert config.gdrive is not None
+        assert config.gdrive.client_secrets_file == "/opt/secrets.json"
+        assert config.gdrive.token_file == "/opt/token.json"
+        assert config.gdrive.root_folder_id == "abc123"
+        assert config.gdrive.shared_drive == "Engineering"
+
+    def test_gdrive_defaults(self):
+        """Test GoogleDriveConfig default values."""
+        config = GoogleDriveConfig()
+
+        assert config.client_secrets_file is None
+        assert config.token_file is None
+        assert config.root_folder_id == "root"
+        assert config.shared_drive is None
+
+    def test_gdrive_not_created_for_ftp_protocol(self):
+        """Test that gdrive config is None when protocol is ftp."""
+        config = load_config(
+            config_path=None,
+            host="test.server.com",
+            drive_letter="Z",
+        )
+
+        assert config.gdrive is None
+
+    def test_gdrive_not_created_for_sftp_protocol(self):
+        """Test that gdrive config is None when protocol is sftp."""
+        config = load_config(
+            config_path=None,
+            protocol="sftp",
+            host="ssh.server.com",
+            drive_letter="Z",
+        )
+
+        assert config.gdrive is None
