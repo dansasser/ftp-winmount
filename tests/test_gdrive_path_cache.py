@@ -18,7 +18,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ftp_winmount.gdrive_path_cache import FOLDER_MIME, PathCache
+from ftp_winmount.gdrive_path_cache import PathCache
 
 
 @pytest.fixture
@@ -44,9 +44,7 @@ def _mock_list_response(mock_service, file_id, file_name="test"):
     """Helper to set up a mock files().list() response."""
     mock_files = MagicMock()
     mock_list = MagicMock()
-    mock_list.execute.return_value = {
-        "files": [{"id": file_id, "name": file_name}]
-    }
+    mock_list.execute.return_value = {"files": [{"id": file_id, "name": file_name}]}
     mock_files.list.return_value = mock_list
     mock_service.files.return_value = mock_files
 

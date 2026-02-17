@@ -239,9 +239,7 @@ class SFTPClient:
                     with self._lock:
                         self._disconnect_internal()
 
-        logger.error(
-            "%s failed after %d attempts", operation, self.conn_config.retry_attempts
-        )
+        logger.error("%s failed after %d attempts", operation, self.conn_config.retry_attempts)
         raise OSError(f"{operation} failed: {last_exception}") from last_exception
 
     def _translate_io_error(self, error: IOError, path: str) -> Exception:
@@ -272,16 +270,14 @@ class SFTPClient:
                 size = attr.st_size if attr.st_size and not is_dir else 0
                 mtime = datetime.fromtimestamp(attr.st_mtime) if attr.st_mtime else datetime.now()
 
-                results.append(
-                    FileStats(name=name, size=size, mtime=mtime, is_dir=is_dir)
-                )
+                results.append(FileStats(name=name, size=size, mtime=mtime, is_dir=is_dir))
 
             logger.debug("Listed %d entries in %s", len(results), path)
             return results
 
         try:
             return self._with_retry(f"list_dir({path})", _list_dir_internal)
-        except IOError as e:
+        except OSError as e:
             raise self._translate_io_error(e, path)
 
     def get_file_info(self, path: str) -> FileStats:
@@ -300,7 +296,7 @@ class SFTPClient:
 
         try:
             return self._with_retry(f"get_file_info({path})", _get_file_info_internal)
-        except IOError as e:
+        except OSError as e:
             raise self._translate_io_error(e, path)
 
     def read_file(self, path: str, offset: int = 0, length: int | None = None) -> bytes:
@@ -322,7 +318,7 @@ class SFTPClient:
 
         try:
             return self._with_retry(f"read_file({path})", _read_file_internal)
-        except IOError as e:
+        except OSError as e:
             raise self._translate_io_error(e, path)
 
     def write_file(self, path: str, data: bytes, offset: int = 0) -> int:
@@ -346,7 +342,7 @@ class SFTPClient:
 
         try:
             return self._with_retry(f"write_file({path})", _write_file_internal)
-        except IOError as e:
+        except OSError as e:
             raise self._translate_io_error(e, path)
 
     def create_file(self, path: str) -> None:
@@ -355,13 +351,13 @@ class SFTPClient:
         logger.debug("Creating empty file: %s", path)
 
         def _create_file_internal() -> None:
-            with self._sftp.open(path, "wb") as f:
+            with self._sftp.open(path, "wb"):
                 pass
             logger.debug("Created empty file: %s", path)
 
         try:
             self._with_retry(f"create_file({path})", _create_file_internal)
-        except IOError as e:
+        except OSError as e:
             raise self._translate_io_error(e, path)
 
     def create_dir(self, path: str) -> None:
@@ -375,7 +371,7 @@ class SFTPClient:
                 self._sftp.mkdir(path)
                 logger.debug("Created directory: %s", path)
                 return
-            except IOError:
+            except OSError:
                 pass
 
             # Recursive creation
@@ -385,13 +381,13 @@ class SFTPClient:
                 current = current + "/" + part
                 try:
                     self._sftp.stat(current)
-                except IOError:
+                except OSError:
                     self._sftp.mkdir(current)
                     logger.debug("Created directory: %s", current)
 
         try:
             self._with_retry(f"create_dir({path})", _create_dir_internal)
-        except IOError as e:
+        except OSError as e:
             raise self._translate_io_error(e, path)
 
     def delete_file(self, path: str) -> None:
@@ -405,7 +401,7 @@ class SFTPClient:
 
         try:
             self._with_retry(f"delete_file({path})", _delete_file_internal)
-        except IOError as e:
+        except OSError as e:
             raise self._translate_io_error(e, path)
 
     def delete_dir(self, path: str) -> None:
@@ -419,7 +415,7 @@ class SFTPClient:
 
         try:
             self._with_retry(f"delete_dir({path})", _delete_dir_internal)
-        except IOError as e:
+        except OSError as e:
             raise self._translate_io_error(e, path)
 
     def rename(self, old_path: str, new_path: str) -> None:
@@ -434,5 +430,5 @@ class SFTPClient:
 
         try:
             self._with_retry(f"rename({old_path}, {new_path})", _rename_internal)
-        except IOError as e:
+        except OSError as e:
             raise self._translate_io_error(e, old_path)

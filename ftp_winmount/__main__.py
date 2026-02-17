@@ -14,8 +14,8 @@ import time
 from .config import load_config
 from .filesystem import WINFSPY_AVAILABLE, FTPFileSystem
 from .ftp_client import FTPClient
-from .logger import setup_logging
 from .gdrive_client import GoogleDriveClient
+from .logger import setup_logging
 from .sftp_client import SFTPClient
 
 if WINFSPY_AVAILABLE:
@@ -78,7 +78,9 @@ Examples:
     auth_parser.add_argument(
         "--client-secrets", required=True, help="Path to Google OAuth client_secrets.json"
     )
-    auth_parser.add_argument("--token-file", help="Where to save the token (default: ~/.ftp-winmount/gdrive-token.json)")
+    auth_parser.add_argument(
+        "--token-file", help="Where to save the token (default: ~/.ftp-winmount/gdrive-token.json)"
+    )
 
     return parser.parse_args()
 
@@ -386,9 +388,9 @@ def cmd_auth(args):
             creds = run_auth_flow(args.client_secrets)
             token_path = get_token_path(getattr(args, "token_file", None))
             save_credentials(creds, token_path)
-            print(f"[OK] Google Drive authorized successfully")
+            print("[OK] Google Drive authorized successfully")
             print(f"     Token saved to: {token_path}")
-            print(f"     You can now mount with: ftp-winmount mount --protocol gdrive --drive Z")
+            print("     You can now mount with: ftp-winmount mount --protocol gdrive --drive Z")
             return 0
         except FileNotFoundError as e:
             print(f"[ERROR] {e}")

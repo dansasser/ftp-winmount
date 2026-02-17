@@ -17,18 +17,13 @@ Tests cover:
 - Shared drive support
 """
 
-import io
-from datetime import datetime
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from ftp_winmount.config import ConnectionConfig, GoogleDriveConfig
-from ftp_winmount.ftp_client import FileStats
 from ftp_winmount.gdrive_client import (
     FOLDER_MIME,
-    WORKSPACE_EXPORT_MAP,
-    WORKSPACE_MIMES,
     GoogleDriveClient,
 )
 
@@ -111,7 +106,9 @@ class TestConnect:
     @patch("ftp_winmount.gdrive_client.PathCache")
     @patch("ftp_winmount.gdrive_client.build")
     @patch("ftp_winmount.gdrive_client.get_or_refresh_credentials")
-    def test_connect_builds_service(self, mock_get_creds, mock_build, mock_cache_cls, gdrive_cfg, conn_cfg):
+    def test_connect_builds_service(
+        self, mock_get_creds, mock_build, mock_cache_cls, gdrive_cfg, conn_cfg
+    ):
         """connect() gets credentials and builds Drive service."""
         mock_creds = MagicMock()
         mock_get_creds.return_value = mock_creds
@@ -193,10 +190,7 @@ class TestListDir:
 
         mock_response = {
             "files": [
-                _make_file_meta(
-                    "f1", "My Document",
-                    "application/vnd.google-apps.document", "0"
-                ),
+                _make_file_meta("f1", "My Document", "application/vnd.google-apps.document", "0"),
             ],
             "nextPageToken": None,
         }
@@ -215,8 +209,7 @@ class TestGetFileInfo:
         """get_file_info returns correct FileStats."""
         client._path_cache.resolve.return_value = "file_id"
         mock_drive_service.files().get().execute.return_value = _make_file_meta(
-            "file_id", "report.pdf", "application/pdf", "5000",
-            "2024-01-15T08:00:00.000Z"
+            "file_id", "report.pdf", "application/pdf", "5000", "2024-01-15T08:00:00.000Z"
         )
 
         result = client.get_file_info("/report.pdf")
@@ -308,7 +301,7 @@ class TestReadFile:
 
         mock_download_cls.side_effect = capture_buffer
 
-        result = client.read_file("/My Doc.docx")
+        client.read_file("/My Doc.docx")
 
         # Should use export_media, not get_media
         mock_drive_service.files().export_media.assert_called_once()

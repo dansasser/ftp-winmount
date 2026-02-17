@@ -20,7 +20,7 @@ Tests cover:
 
 import stat as stat_module
 from datetime import datetime
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 import paramiko
 import pytest
@@ -274,7 +274,7 @@ class TestSFTPClientReadFile:
         mock_sftp.open.return_value.__enter__ = MagicMock(return_value=mock_file)
         mock_sftp.open.return_value.__exit__ = MagicMock(return_value=False)
 
-        result = sftp_client.read_file("/test.txt", length=5)
+        sftp_client.read_file("/test.txt", length=5)
         mock_file.read.assert_called_once_with(5)
 
 
@@ -325,8 +325,8 @@ class TestSFTPClientFileOps:
     def test_create_dir_recursive(self, sftp_client, mock_sftp):
         """Test recursive directory creation."""
         # First mkdir fails (parent doesn't exist), then stat fails for each part
-        mock_sftp.mkdir.side_effect = [IOError("no parent"), None, None]
-        mock_sftp.stat.side_effect = [IOError("not found"), IOError("not found")]
+        mock_sftp.mkdir.side_effect = [OSError("no parent"), None, None]
+        mock_sftp.stat.side_effect = [OSError("not found"), OSError("not found")]
 
         sftp_client.create_dir("/a/b")
         assert mock_sftp.mkdir.call_count == 3

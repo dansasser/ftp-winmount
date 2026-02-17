@@ -16,9 +16,9 @@ class TestRemoteClientProtocol:
 
     def test_ftp_client_is_remote_client(self):
         """FTPClient should satisfy the RemoteClient protocol."""
-        assert issubclass(FTPClient, RemoteClient) or isinstance(
-            FTPClient, type
-        ), "FTPClient must be compatible with RemoteClient"
+        assert issubclass(FTPClient, RemoteClient) or isinstance(FTPClient, type), (
+            "FTPClient must be compatible with RemoteClient"
+        )
         # Check all required methods exist
         required_methods = [
             "connect",
@@ -38,9 +38,9 @@ class TestRemoteClientProtocol:
 
     def test_sftp_client_is_remote_client(self):
         """SFTPClient should satisfy the RemoteClient protocol."""
-        assert issubclass(SFTPClient, RemoteClient) or isinstance(
-            SFTPClient, type
-        ), "SFTPClient must be compatible with RemoteClient"
+        assert issubclass(SFTPClient, RemoteClient) or isinstance(SFTPClient, type), (
+            "SFTPClient must be compatible with RemoteClient"
+        )
         required_methods = [
             "connect",
             "disconnect",

@@ -10,7 +10,6 @@ Tests cover:
 - get_or_refresh_credentials orchestration
 """
 
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -44,7 +43,7 @@ class TestGetTokenPath:
 
     def test_default_path_is_in_home(self):
         """Default token path is under user home directory."""
-        assert DEFAULT_TOKEN_DIR == Path.home() / ".ftp-winmount"
+        assert Path.home() / ".ftp-winmount" == DEFAULT_TOKEN_DIR
         assert DEFAULT_TOKEN_FILE == DEFAULT_TOKEN_DIR / "gdrive-token.json"
 
 
@@ -68,9 +67,7 @@ class TestLoadCredentials:
         result = load_credentials(token_path)
 
         assert result == mock_creds
-        mock_creds_class.from_authorized_user_file.assert_called_once_with(
-            str(token_path), SCOPES
-        )
+        mock_creds_class.from_authorized_user_file.assert_called_once_with(str(token_path), SCOPES)
 
     def test_returns_none_on_invalid_json(self, tmp_path):
         """Returns None when token file contains invalid JSON."""
@@ -262,9 +259,7 @@ class TestGetOrRefreshCredentials:
         mock_creds = MagicMock()
         mock_flow.return_value = mock_creds
 
-        result = get_or_refresh_credentials(
-            client_secrets_file="/path/to/secrets.json"
-        )
+        result = get_or_refresh_credentials(client_secrets_file="/path/to/secrets.json")
 
         assert result == mock_creds
         mock_flow.assert_called_once_with("/path/to/secrets.json")

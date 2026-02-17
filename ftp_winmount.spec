@@ -33,6 +33,33 @@ a = Analysis(
         '_cffi_backend',
         # cachetools
         'cachetools',
+        # paramiko (SFTP/SSH)
+        'paramiko',
+        'paramiko.transport',
+        'paramiko.sftp_client',
+        'paramiko.rsakey',
+        'paramiko.ecdsakey',
+        'paramiko.ed25519key',
+        'paramiko.agent',
+        'paramiko.ssh_exception',
+        'bcrypt',
+        'cryptography',
+        'nacl',
+        'nacl.signing',
+        'nacl.bindings',
+        # Google Drive API
+        'googleapiclient',
+        'googleapiclient.discovery',
+        'googleapiclient.http',
+        'googleapiclient.errors',
+        'google.auth',
+        'google.auth.transport',
+        'google.auth.transport.requests',
+        'google.auth.credentials',
+        'google.oauth2',
+        'google.oauth2.credentials',
+        'google_auth_oauthlib',
+        'google_auth_oauthlib.flow',
         # standard library modules that might be needed
         'ftplib',
         'configparser',
@@ -51,7 +78,6 @@ a = Analysis(
     excludes=[
         # Exclude unnecessary modules to reduce size
         'tkinter',
-        'unittest',
         'pydoc',
         'doctest',
         'test',

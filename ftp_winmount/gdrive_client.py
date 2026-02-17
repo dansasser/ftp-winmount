@@ -112,10 +112,14 @@ class GoogleDriveClient:
 
         # Search by name
         try:
-            result = self._service.drives().list(
-                q=f"name='{sd}'",
-                pageSize=1,
-            ).execute()
+            result = (
+                self._service.drives()
+                .list(
+                    q=f"name='{sd}'",
+                    pageSize=1,
+                )
+                .execute()
+            )
             drives = result.get("drives", [])
             if drives:
                 drive_id = drives[0]["id"]
@@ -307,9 +311,7 @@ class GoogleDriveClient:
             # Workspace files need export
             if mime in WORKSPACE_EXPORT_MAP:
                 export_mime = WORKSPACE_EXPORT_MAP[mime]["mime"]
-                request = self._service.files().export_media(
-                    fileId=file_id, mimeType=export_mime
-                )
+                request = self._service.files().export_media(fileId=file_id, mimeType=export_mime)
             else:
                 kwargs = {"fileId": file_id}
                 if self.gdrive_config.shared_drive:
@@ -363,7 +365,7 @@ class GoogleDriveClient:
                 existing = buf.getvalue()
 
                 # Splice in the new data at offset
-                new_data = existing[:offset] + data + existing[offset + len(data):]
+                new_data = existing[:offset] + data + existing[offset + len(data) :]
             else:
                 new_data = data
 
