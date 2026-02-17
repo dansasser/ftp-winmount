@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ftp-winmount"
-version = "0.1.1"
-description = "Mount FTP server as a local Windows drive using WinFsp"
+version = "0.2.0"
+description = "Mount FTP, SFTP, or Google Drive as a local Windows drive"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
     {name = "Daniel T Sasser II"}
 ]
-keywords = ["ftp", "mount", "windows", "drive", "winfsp", "filesystem"]
+keywords = ["ftp", "sftp", "ssh", "google-drive", "mount", "windows", "drive", "winfsp", "filesystem"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
@@ -33,6 +33,10 @@ classifiers = [
 dependencies = [
     "winfspy>=0.8.0; platform_system == 'Windows'",
     "cachetools>=5.0.0",
+    "paramiko>=3.0.0",
+    "google-api-python-client>=2.100.0",
+    "google-auth>=2.20.0",
+    "google-auth-oauthlib>=1.0.0",
 ]
 
 [project.optional-dependencies]
