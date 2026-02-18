@@ -15,9 +15,20 @@ from .config import (
 )
 from .filesystem import FTPFileSystem
 from .ftp_client import FileStats, FTPClient
-from .gdrive_client import GoogleDriveClient
 from .remote_client import RemoteClient
 from .sftp_client import SFTPClient
+
+
+def get_google_drive_client():
+    """Lazy loader for GoogleDriveClient.
+
+    Returns the GoogleDriveClient class, importing it on first use so that
+    importing ftp_winmount does not require google-api-python-client.
+    """
+    from .gdrive_client import GoogleDriveClient
+
+    return GoogleDriveClient
+
 
 __all__ = [
     "__version__",
@@ -35,7 +46,7 @@ __all__ = [
     "RemoteClient",
     "FTPClient",
     "SFTPClient",
-    "GoogleDriveClient",
+    "get_google_drive_client",
     "FileStats",
     # Cache
     "DirectoryCache",

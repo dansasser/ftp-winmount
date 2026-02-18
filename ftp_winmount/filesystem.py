@@ -673,8 +673,17 @@ class FTPFileSystem(BaseFileSystemOperations):
         # Build new path: correct-case parent + new filename from Windows
         win_new_path = self._to_ftp_path(new_file_name)
         new_basename = win_new_path.rsplit("/", 1)[-1]
+        win_new_parent = win_new_path.rsplit("/", 1)[0] if "/" in win_new_path else ""
         old_parent = old_ftp_path.rsplit("/", 1)[0] if "/" in old_ftp_path else ""
-        new_ftp_path = old_parent + "/" + new_basename if old_parent else "/" + new_basename
+        old_win_path = self._to_ftp_path(file_name)
+        old_win_parent = old_win_path.rsplit("/", 1)[0] if "/" in old_win_path else ""
+
+        # If the parent directory changed, use the Windows new path as-is (cross-dir move)
+        # If same parent, use old_parent for correct case + new basename
+        if win_new_parent != old_win_parent:
+            new_ftp_path = win_new_path
+        else:
+            new_ftp_path = (old_parent + "/" + new_basename) if old_parent else ("/" + new_basename)
 
         logger.info("rename: %s -> %s (replace=%s)", old_ftp_path, new_ftp_path, replace_if_exists)
 

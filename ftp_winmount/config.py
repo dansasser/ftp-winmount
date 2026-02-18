@@ -308,6 +308,8 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
         # Load protocol from config (can be in [general] or [ftp] section)
         if parser.has_section("general") and parser["general"].get("protocol"):
             protocol = parser["general"]["protocol"].lower()
+        elif parser.has_section("ftp") and parser["ftp"].get("protocol"):
+            protocol = parser["ftp"]["protocol"].lower()
 
     # Override with CLI arguments (cli_args take precedence)
     if cli_args.get("protocol") is not None:
@@ -321,9 +323,19 @@ def load_config(config_path: str | None = None, **cli_args) -> AppConfig:
             ftp_config["host"] = cli_args["host"]
     if cli_args.get("port") is not None:
         if protocol == "sftp":
-            ssh_config["port"] = int(cli_args["port"])
+            try:
+                ssh_config["port"] = int(cli_args["port"])
+            except (ValueError, TypeError):
+                raise ValueError(
+                    f"Invalid port value: '{cli_args['port']}' - must be an integer"
+                )
         else:
-            ftp_config["port"] = int(cli_args["port"])
+            try:
+                ftp_config["port"] = int(cli_args["port"])
+            except (ValueError, TypeError):
+                raise ValueError(
+                    f"Invalid port value: '{cli_args['port']}' - must be an integer"
+                )
     if cli_args.get("username") is not None:
         if protocol == "sftp":
             ssh_config["username"] = cli_args["username"] or None

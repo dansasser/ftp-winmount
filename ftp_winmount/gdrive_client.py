@@ -146,7 +146,8 @@ class GoogleDriveClient:
 
         for attempt in range(self.conn_config.retry_attempts):
             try:
-                return func(*args, **kwargs)
+                with self._lock:
+                    return func(*args, **kwargs)
             except FileNotFoundError:
                 raise
             except PermissionError:

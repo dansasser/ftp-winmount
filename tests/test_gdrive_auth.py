@@ -15,7 +15,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ftp_winmount.gdrive_auth import (
+pytest.importorskip("google.auth", reason="google-auth not installed")
+pytest.importorskip("google_auth_oauthlib", reason="google-auth-oauthlib not installed")
+
+from ftp_winmount.gdrive_auth import (  # noqa: E402
     DEFAULT_TOKEN_DIR,
     DEFAULT_TOKEN_FILE,
     SCOPES,

@@ -14,9 +14,7 @@ import time
 from .config import load_config
 from .filesystem import WINFSPY_AVAILABLE, FTPFileSystem
 from .ftp_client import FTPClient
-from .gdrive_client import GoogleDriveClient
 from .logger import setup_logging
-from .sftp_client import SFTPClient
 
 if WINFSPY_AVAILABLE:
     from winfspy import FileSystem, FileSystemAlreadyStarted, FileSystemNotStarted
@@ -146,10 +144,14 @@ def cmd_mount(args):
 
         # 4. Initialize Remote Client (FTP, SFTP, or Google Drive)
         if config.protocol == "gdrive":
+            from .gdrive_client import GoogleDriveClient
+
             logger.info("Connecting to Google Drive...")
             remote_client = GoogleDriveClient(config.gdrive, config.connection)
             server_desc = "Google Drive"
         elif config.protocol == "sftp":
+            from .sftp_client import SFTPClient
+
             logger.info("Connecting to SSH/SFTP server...")
             remote_client = SFTPClient(config.ssh, config.connection)
             server_desc = f"{config.ssh.host}:{config.ssh.port}"
