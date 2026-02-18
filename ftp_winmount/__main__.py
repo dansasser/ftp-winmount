@@ -2,7 +2,7 @@
 FTP-WinMount - Main Entry Point
 
 This module provides the CLI interface and wires up all components
-to mount an FTP server as a local Windows drive using WinFsp.
+to mount a remote server (FTP or SFTP) as a local Windows drive using WinFsp.
 """
 
 import argparse
@@ -26,11 +26,12 @@ logger = logging.getLogger(__name__)
 def parse_args():
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        description="FTP-WinMount - Mount FTP as Local Drive",
+        description="FTP-WinMount - Mount FTP/SFTP as Local Drive",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   ftp-winmount mount --host 192.168.0.130 --port 2121 --drive Z
+  ftp-winmount mount --protocol sftp --host myserver.com --key-file ~/.ssh/id_rsa --drive Z
   ftp-winmount mount --config config.ini
   ftp-winmount unmount --drive Z
   ftp-winmount status
@@ -49,6 +50,17 @@ Examples:
     mount_parser.add_argument("--password", help="FTP Password")
     mount_parser.add_argument("--drive", help="Drive letter to mount (e.g. Z)")
     mount_parser.add_argument("--secure", action="store_true", help="Use FTPS (FTP over TLS)")
+    mount_parser.add_argument(
+        "--protocol",
+        choices=["ftp", "ftps", "sftp", "gdrive"],
+        default=None,
+        help="Protocol to use (default: ftp)",
+    )
+    mount_parser.add_argument("--key-file", help="Path to SSH private key (SFTP only)")
+    mount_parser.add_argument("--key-passphrase", help="Passphrase for encrypted SSH key")
+    mount_parser.add_argument("--client-secrets", help="Path to Google OAuth client_secrets.json")
+    mount_parser.add_argument("--root-folder", help="Google Drive folder to mount (default: root)")
+    mount_parser.add_argument("--shared-drive", help="Name or ID of shared/team drive")
     mount_parser.add_argument("--verbose", action="store_true", help="Enable debug logging")
 
     # Unmount command
@@ -57,6 +69,16 @@ Examples:
 
     # Status command
     subparsers.add_parser("status", help="Show mounted drives")
+
+    # Auth command (Google Drive OAuth setup)
+    auth_parser = subparsers.add_parser("auth", help="Authenticate with a cloud service")
+    auth_parser.add_argument("service", choices=["google"], help="Service to authenticate with")
+    auth_parser.add_argument(
+        "--client-secrets", required=True, help="Path to Google OAuth client_secrets.json"
+    )
+    auth_parser.add_argument(
+        "--token-file", help="Where to save the token (default: ~/.ftp-winmount/gdrive-token.json)"
+    )
 
     return parser.parse_args()
 
@@ -81,15 +103,36 @@ def cmd_mount(args):
             password=args.password,
             drive_letter=args.drive,
             secure=args.secure if args.secure else None,
+            protocol=args.protocol,
+            key_file=getattr(args, "key_file", None),
+            key_passphrase=getattr(args, "key_passphrase", None),
+            client_secrets=getattr(args, "client_secrets", None),
+            root_folder=getattr(args, "root_folder", None),
+            shared_drive=getattr(args, "shared_drive", None),
             debug=args.verbose,
         )
 
         # 2. Setup Logging
         setup_logging(config.logging)
-        logger.info("Starting FTP-WinMount v0.1.0")
-        logger.info(
-            "Mounting %s:%d to %s:", config.ftp.host, config.ftp.port, config.mount.drive_letter
-        )
+        from . import __version__
+
+        logger.info("Starting FTP-WinMount v%s", __version__)
+        if config.protocol == "gdrive":
+            logger.info("Mounting Google Drive to %s:", config.mount.drive_letter)
+        elif config.protocol == "sftp":
+            logger.info(
+                "Mounting %s:%d to %s:",
+                config.ssh.host,
+                config.ssh.port,
+                config.mount.drive_letter,
+            )
+        else:
+            logger.info(
+                "Mounting %s:%d to %s:",
+                config.ftp.host,
+                config.ftp.port,
+                config.mount.drive_letter,
+            )
 
         # 3. Check WinFsp availability
         if not WINFSPY_AVAILABLE:
@@ -99,29 +142,45 @@ def cmd_mount(args):
             print("Then install winfspy: pip install winfspy")
             return 1
 
-        # 4. Initialize FTP Client
-        logger.info("Connecting to FTP server...")
-        ftp_client = FTPClient(config.ftp, config.connection)
+        # 4. Initialize Remote Client (FTP, SFTP, or Google Drive)
+        if config.protocol == "gdrive":
+            from .gdrive_client import GoogleDriveClient
+
+            logger.info("Connecting to Google Drive...")
+            remote_client = GoogleDriveClient(config.gdrive, config.connection)
+            server_desc = "Google Drive"
+        elif config.protocol == "sftp":
+            from .sftp_client import SFTPClient
+
+            logger.info("Connecting to SSH/SFTP server...")
+            remote_client = SFTPClient(config.ssh, config.connection)
+            server_desc = f"{config.ssh.host}:{config.ssh.port}"
+        else:
+            logger.info("Connecting to FTP server...")
+            remote_client = FTPClient(config.ftp, config.connection)
+            server_desc = f"{config.ftp.host}:{config.ftp.port}"
+
+        ftp_client = remote_client  # Keep variable name for cleanup block
         try:
-            ftp_client.connect()
-            logger.info("FTP connection established")
+            remote_client.connect()
+            logger.info("Connection established")
         except ConnectionError as e:
-            logger.error("Failed to connect to FTP server: %s", e)
-            print(f"[ERROR] Could not connect to FTP server at {config.ftp.host}:{config.ftp.port}")
+            logger.error("Failed to connect to server: %s", e)
+            print(f"[ERROR] Could not connect to server at {server_desc}")
             print(f"        {e}")
             return 1
         except PermissionError as e:
-            logger.error("FTP authentication failed: %s", e)
-            print(f"[ERROR] FTP authentication failed: {e}")
+            logger.error("Authentication failed: %s", e)
+            print(f"[ERROR] Authentication failed: {e}")
             return 1
         except TimeoutError as e:
-            logger.error("FTP connection timed out: %s", e)
-            print(f"[ERROR] Connection to {config.ftp.host}:{config.ftp.port} timed out")
+            logger.error("Connection timed out: %s", e)
+            print(f"[ERROR] Connection to {server_desc} timed out")
             return 1
 
         # 5. Initialize Filesystem
-        logger.info("Initializing FTP filesystem...")
-        ftp_fs_ops = FTPFileSystem(ftp_client, config.cache)
+        logger.info("Initializing filesystem...")
+        ftp_fs_ops = FTPFileSystem(remote_client, config.cache)
 
         # 6. Create WinFsp FileSystem
         mountpoint = f"{config.mount.drive_letter}:"
@@ -168,10 +227,27 @@ def cmd_mount(args):
             return 1
 
         logger.info("Mount successful at %s", mountpoint)
-        protocol = "FTPS" if config.ftp.secure else "FTP"
-        print(f"[OK] {protocol} server mounted at {mountpoint}")
-        print(f"     Host: {config.ftp.host}:{config.ftp.port}")
-        if config.ftp.secure:
+        if config.protocol == "gdrive":
+            proto_label = "Google Drive"
+            host_label = "drive.google.com"
+        elif config.protocol == "sftp":
+            proto_label = "SFTP"
+            host_label = f"{config.ssh.host}:{config.ssh.port}"
+        elif config.ftp.secure:
+            proto_label = "FTPS"
+            host_label = f"{config.ftp.host}:{config.ftp.port}"
+        else:
+            proto_label = "FTP"
+            host_label = f"{config.ftp.host}:{config.ftp.port}"
+        print(f"[OK] {proto_label} mounted at {mountpoint}")
+        print(f"     Host: {host_label}")
+        if config.protocol == "gdrive":
+            print("     Mode: Google Drive API")
+            if config.gdrive.shared_drive:
+                print(f"     Shared Drive: {config.gdrive.shared_drive}")
+        elif config.protocol == "sftp":
+            print("     Mode: SSH/SFTP")
+        elif config.ftp.secure:
             print("     Mode: Secure (TLS)")
         print("     Press Ctrl+C to stop.")
 
@@ -212,11 +288,11 @@ def cmd_mount(args):
 
         if ftp_client is not None:
             try:
-                logger.info("Disconnecting from FTP...")
+                logger.info("Disconnecting from server...")
                 ftp_client.disconnect()
-                logger.info("FTP disconnected")
+                logger.info("Disconnected")
             except Exception as e:
-                logger.warning("Error disconnecting FTP: %s", e)
+                logger.warning("Error disconnecting: %s", e)
 
 
 def cmd_unmount(args):
@@ -300,6 +376,35 @@ def cmd_status(args):
         return 1
 
 
+def cmd_auth(args):
+    """
+    Handle the auth command.
+
+    Runs the OAuth flow for a cloud service and saves credentials.
+    """
+    if args.service == "google":
+        from .gdrive_auth import get_token_path, run_auth_flow, save_credentials
+
+        try:
+            print("[INFO] Authenticating with Google Drive...")
+            creds = run_auth_flow(args.client_secrets)
+            token_path = get_token_path(getattr(args, "token_file", None))
+            save_credentials(creds, token_path)
+            print("[OK] Google Drive authorized successfully")
+            print(f"     Token saved to: {token_path}")
+            print("     You can now mount with: ftp-winmount mount --protocol gdrive --drive Z")
+            return 0
+        except FileNotFoundError as e:
+            print(f"[ERROR] {e}")
+            return 1
+        except Exception as e:
+            print(f"[ERROR] Authentication failed: {e}")
+            return 1
+    else:
+        print(f"[ERROR] Unknown service: {args.service}")
+        return 1
+
+
 def main():
     """Main entry point."""
     args = parse_args()
@@ -310,6 +415,8 @@ def main():
         return cmd_unmount(args)
     elif args.command == "status":
         return cmd_status(args)
+    elif args.command == "auth":
+        return cmd_auth(args)
     else:
         print("Usage: ftp-winmount <command> [options]")
         print()

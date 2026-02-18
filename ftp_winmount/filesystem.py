@@ -83,7 +83,8 @@ from io import BytesIO
 from typing import Any
 
 from .cache import DirectoryCache, MetadataCache
-from .ftp_client import FileStats, FTPClient
+from .ftp_client import FileStats
+from .remote_client import RemoteClient
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +162,7 @@ FileContext = OpenedContext
 class FTPFileSystem(BaseFileSystemOperations):
     """WinFsp Filesystem implementation that backs to an FTP server."""
 
-    def __init__(self, ftp_client: FTPClient, cache_config):
+    def __init__(self, ftp_client: RemoteClient, cache_config):
         super().__init__()
         self._thread_lock = threading.Lock()
         self.ftp = ftp_client
@@ -452,12 +453,54 @@ class FTPFileSystem(BaseFileSystemOperations):
             raise NTStatusIOTimeout()
 
     @operation
-    def set_file_info(self, file_context: OpenedContext, file_info: dict[str, Any]) -> None:
-        """Set file metadata."""
-        if "file_size" in file_info and file_info["file_size"] == 0:
-            file_context.buffer = BytesIO()
-            file_context.file_size = 0
-            file_context.dirty = True
+    def set_basic_info(
+        self,
+        file_context: OpenedContext,
+        file_attributes: int,
+        creation_time: int,
+        last_access_time: int,
+        last_write_time: int,
+        change_time: int,
+        file_info: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Set basic file metadata (timestamps, attributes).
+
+        WinFsp calls this during rename, attribute changes, and timestamp
+        updates. A value of 0 means "don't change this field".
+        """
+        logger.info("set_basic_info: %s (attrs=%s)", file_context.path, file_attributes)
+        if file_attributes != 0:
+            file_context.attributes = file_attributes
+        if creation_time != 0:
+            file_context.creation_time = creation_time
+        if last_access_time != 0:
+            file_context.last_access_time = last_access_time
+        if last_write_time != 0:
+            file_context.last_write_time = last_write_time
+        if change_time != 0:
+            file_context.change_time = change_time
+
+        return {
+            "file_attributes": file_context.attributes,
+            "file_size": file_context.file_size,
+            "allocation_size": file_context.file_size,
+            "creation_time": file_context.creation_time,
+            "last_access_time": file_context.last_access_time,
+            "last_write_time": file_context.last_write_time,
+            "change_time": file_context.change_time,
+            "index_number": 0,
+        }
+
+    @operation
+    def can_delete(self, file_context: OpenedContext, file_name: str) -> None:
+        """Check if a file or directory can be deleted.
+
+        WinFsp calls this before allowing deletion. If this raises,
+        the delete is denied. We allow all deletes -- actual errors
+        are handled in cleanup().
+        """
+        logger.info("can_delete: %s (%s)", file_name, file_context.path)
+        # Allow deletion. Actual delete happens in cleanup() with FspCleanupDelete flag.
 
     @operation
     def set_file_size(
@@ -535,15 +578,17 @@ class FTPFileSystem(BaseFileSystemOperations):
         """Create a new file or directory."""
         ftp_path = self._to_ftp_path(file_name)
         is_directory = bool(create_options & FILE_DIRECTORY_FILE)
-        logger.debug("create: %s -> %s (directory=%s)", file_name, ftp_path, is_directory)
+        logger.info("create: %s -> %s (directory=%s)", file_name, ftp_path, is_directory)
 
         try:
             if is_directory:
                 self.ftp.create_dir(ftp_path)
                 attributes = FILE_ATTRIBUTE_DIRECTORY
+                logger.info("create: OK directory %s", ftp_path)
             else:
                 self.ftp.create_file(ftp_path)
                 attributes = FILE_ATTRIBUTE_NORMAL
+                logger.info("create: OK file %s", ftp_path)
 
             self.dir_cache.invalidate_parent(ftp_path)
             now_filetime = filetime_now()
@@ -569,6 +614,8 @@ class FTPFileSystem(BaseFileSystemOperations):
     @operation
     def cleanup(self, file_context: OpenedContext, file_name: str, flags: int) -> None:
         """Called when handle is closed. Handle deletion and flush here."""
+        if flags & FspCleanupDelete:
+            logger.info("cleanup: DELETE %s", file_context.path)
         # Flush dirty buffers
         if file_context.dirty and file_context.buffer is not None:
             try:
@@ -588,8 +635,10 @@ class FTPFileSystem(BaseFileSystemOperations):
             if file_context.is_directory:
                 self.ftp.delete_dir(file_context.path)
                 self.dir_cache.invalidate(file_context.path)
+                logger.info("cleanup: DELETED directory %s", file_context.path)
             else:
                 self.ftp.delete_file(file_context.path)
+                logger.info("cleanup: DELETED file %s", file_context.path)
 
             self.dir_cache.invalidate_parent(file_context.path)
             self.meta_cache.invalidate(file_context.path)
@@ -611,9 +660,32 @@ class FTPFileSystem(BaseFileSystemOperations):
         new_file_name: str,
         replace_if_exists: bool,
     ) -> None:
-        """Rename/Move file or directory."""
-        old_ftp_path = self._to_ftp_path(file_name)
-        new_ftp_path = self._to_ftp_path(new_file_name)
+        """Rename/Move file or directory.
+
+        Windows may pass paths in different case than the server uses
+        (e.g., /VAR/WWW/FILE vs /var/www/file). We use file_context.path
+        for the source (correct case from open/create) and build the new
+        path using the correct parent directory plus the new filename.
+        """
+        # Use file_context.path for correct case on case-sensitive servers
+        old_ftp_path = file_context.path
+
+        # Build new path: correct-case parent + new filename from Windows
+        win_new_path = self._to_ftp_path(new_file_name)
+        new_basename = win_new_path.rsplit("/", 1)[-1]
+        win_new_parent = win_new_path.rsplit("/", 1)[0] if "/" in win_new_path else ""
+        old_parent = old_ftp_path.rsplit("/", 1)[0] if "/" in old_ftp_path else ""
+        old_win_path = self._to_ftp_path(file_name)
+        old_win_parent = old_win_path.rsplit("/", 1)[0] if "/" in old_win_path else ""
+
+        # If the parent directory changed, use the Windows new path as-is (cross-dir move)
+        # If same parent, use old_parent for correct case + new basename
+        if win_new_parent != old_win_parent:
+            new_ftp_path = win_new_path
+        else:
+            new_ftp_path = (old_parent + "/" + new_basename) if old_parent else ("/" + new_basename)
+
+        logger.info("rename: %s -> %s (replace=%s)", old_ftp_path, new_ftp_path, replace_if_exists)
 
         try:
             if not replace_if_exists:
@@ -634,6 +706,7 @@ class FTPFileSystem(BaseFileSystemOperations):
                     pass
 
             self.ftp.rename(old_ftp_path, new_ftp_path)
+            logger.info("rename: OK %s -> %s", old_ftp_path, new_ftp_path)
 
             self.dir_cache.invalidate_parent(old_ftp_path)
             self.dir_cache.invalidate_parent(new_ftp_path)

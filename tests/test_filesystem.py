@@ -844,27 +844,119 @@ class TestGetFileInfo:
         assert result["file_attributes"] == FILE_ATTRIBUTE_NORMAL
 
 
-class TestSetFileInfo:
-    """Tests for set_file_info method."""
+class TestSetBasicInfo:
+    """Tests for set_basic_info method."""
 
-    def test_set_file_info_handles_truncation(
+    def test_set_basic_info_updates_timestamps(
         self, filesystem: FTPFileSystem, mock_ftp_client: MagicMock
     ):
-        """Test that set_file_info handles truncation (file_size=0)."""
+        """Test that set_basic_info updates timestamps when non-zero."""
         context = FileContext(
             path="/file.txt",
             is_directory=False,
             file_size=1024,
-            buffer=BytesIO(b"existing content"),
-            dirty=False,
+            attributes=FILE_ATTRIBUTE_NORMAL,
+            mtime_filetime=100,
         )
 
-        filesystem.set_file_info(context, {"file_size": 0})
+        result = filesystem.set_basic_info(
+            context,
+            file_attributes=0,
+            creation_time=200,
+            last_access_time=300,
+            last_write_time=400,
+            change_time=500,
+            file_info={},
+        )
 
-        assert context.file_size == 0
-        assert context.dirty is True
-        context.buffer.seek(0)
-        assert context.buffer.read() == b""
+        assert context.creation_time == 200
+        assert context.last_access_time == 300
+        assert context.last_write_time == 400
+        assert context.change_time == 500
+        assert result["creation_time"] == 200
+        assert result["last_write_time"] == 400
+
+    def test_set_basic_info_skips_zero_values(
+        self, filesystem: FTPFileSystem, mock_ftp_client: MagicMock
+    ):
+        """Test that set_basic_info doesn't change fields when value is 0."""
+        context = FileContext(
+            path="/file.txt",
+            is_directory=False,
+            file_size=1024,
+            attributes=FILE_ATTRIBUTE_NORMAL,
+            mtime_filetime=100,
+        )
+
+        filesystem.set_basic_info(
+            context,
+            file_attributes=0,
+            creation_time=0,
+            last_access_time=0,
+            last_write_time=0,
+            change_time=0,
+            file_info={},
+        )
+
+        # All timestamps should remain at original value (100)
+        assert context.creation_time == 100
+        assert context.last_access_time == 100
+        assert context.last_write_time == 100
+        assert context.change_time == 100
+
+    def test_set_basic_info_updates_attributes(
+        self, filesystem: FTPFileSystem, mock_ftp_client: MagicMock
+    ):
+        """Test that set_basic_info updates file attributes when non-zero."""
+        context = FileContext(
+            path="/file.txt",
+            is_directory=False,
+            file_size=0,
+            attributes=FILE_ATTRIBUTE_NORMAL,
+            mtime_filetime=100,
+        )
+
+        filesystem.set_basic_info(
+            context,
+            file_attributes=0x20,  # FILE_ATTRIBUTE_ARCHIVE
+            creation_time=0,
+            last_access_time=0,
+            last_write_time=0,
+            change_time=0,
+            file_info={},
+        )
+
+        assert context.attributes == 0x20
+
+
+class TestCanDelete:
+    """Tests for can_delete method."""
+
+    def test_can_delete_allows_file(self, filesystem: FTPFileSystem, mock_ftp_client: MagicMock):
+        """Test that can_delete allows file deletion."""
+        context = FileContext(
+            path="/file.txt",
+            is_directory=False,
+            file_size=100,
+            attributes=FILE_ATTRIBUTE_NORMAL,
+            mtime_filetime=100,
+        )
+        # Should not raise
+        filesystem.can_delete(context, "\\file.txt")
+
+    def test_can_delete_allows_directory(
+        self, filesystem: FTPFileSystem, mock_ftp_client: MagicMock
+    ):
+        """Test that can_delete allows directory deletion."""
+        context = FileContext(
+            path="/mydir",
+            is_directory=True,
+            file_size=0,
+            attributes=FILE_ATTRIBUTE_DIRECTORY,
+            mtime_filetime=100,
+        )
+        # Should not raise
+        filesystem.can_delete(context, "\\mydir")
 
 
 class TestFileContext:

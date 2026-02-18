@@ -15,8 +15,10 @@ from ftp_winmount.config import (
     CacheConfig,
     ConnectionConfig,
     FTPConfig,
+    GoogleDriveConfig,
     LogConfig,
     MountConfig,
+    SSHConfig,
 )
 from ftp_winmount.ftp_client import FileStats, FTPClient
 
@@ -223,4 +225,61 @@ def app_config(
         cache=cache_config,
         connection=conn_config,
         logging=LogConfig(level="DEBUG", file="test.log", console=False),
+    )
+
+
+@pytest.fixture
+def gdrive_config() -> GoogleDriveConfig:
+    """Creates a standard GoogleDriveConfig for testing."""
+    return GoogleDriveConfig(
+        client_secrets_file="/path/to/client_secrets.json",
+        token_file="/path/to/token.json",
+        root_folder_id="root",
+        shared_drive=None,
+    )
+
+
+@pytest.fixture
+def gdrive_app_config(
+    gdrive_config: GoogleDriveConfig,
+    conn_config: ConnectionConfig,
+    cache_config: CacheConfig,
+) -> AppConfig:
+    """Creates a complete AppConfig for Google Drive testing."""
+    return AppConfig(
+        ftp=FTPConfig(host=""),
+        mount=MountConfig(drive_letter="Z", volume_label="Test Google Drive"),
+        cache=cache_config,
+        connection=conn_config,
+        logging=LogConfig(level="DEBUG", file="test.log", console=False),
+        protocol="gdrive",
+        gdrive=gdrive_config,
+    )
+
+
+@pytest.fixture
+def ssh_config() -> SSHConfig:
+    """Creates a standard SSHConfig for testing."""
+    return SSHConfig(
+        host="test.ssh.local",
+        port=22,
+        username="testuser",
+        key_file="/home/testuser/.ssh/id_rsa",
+        use_agent=False,
+    )
+
+
+@pytest.fixture
+def ssh_app_config(
+    ssh_config: SSHConfig, conn_config: ConnectionConfig, cache_config: CacheConfig
+) -> AppConfig:
+    """Creates a complete AppConfig for SFTP testing."""
+    return AppConfig(
+        ftp=FTPConfig(host=""),
+        mount=MountConfig(drive_letter="Z", volume_label="Test SFTP"),
+        cache=cache_config,
+        connection=conn_config,
+        logging=LogConfig(level="DEBUG", file="test.log", console=False),
+        protocol="sftp",
+        ssh=ssh_config,
     )

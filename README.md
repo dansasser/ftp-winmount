@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Windows](https://img.shields.io/badge/platform-Windows-blue.svg)](https://www.microsoft.com/windows)
 
-Mount any FTP server as a local Windows drive. No sync, no ads, no telemetry.
+Mount FTP, SFTP, or Google Drive as a local Windows drive. No sync, no ads, no telemetry.
 
 ---
 
@@ -53,10 +53,13 @@ If you don't want to install:
 
 ## Features
 
-- Mount FTP server as a Windows drive letter (Z:, Y:, etc.)
+- Mount FTP, SFTP, or Google Drive as a Windows drive letter (Z:, Y:, etc.)
 - Full read/write support
+- SSH key authentication (RSA, ECDSA, Ed25519), password, and SSH agent support
+- Google Drive with OAuth 2.0, shared drives, and Workspace file export
 - Works with any application (VS Code, File Explorer, Notepad, etc.)
 - Anonymous or authenticated FTP
+- FTPS (FTP over TLS) support
 - Auto-reconnect on connection drop
 - Lightweight, no background services when not in use
 - Open source, no ads, no tracking
@@ -166,7 +169,21 @@ Mount an anonymous FTP server:
 ftp-winmount mount --host 192.168.0.130 --port 2121 --drive Z
 ```
 
-Your FTP server is now accessible at `Z:\`
+Mount an SFTP server with SSH key:
+```bash
+ftp-winmount mount --protocol sftp --host myserver.com --key-file ~/.ssh/id_rsa --drive Z
+```
+
+Mount Google Drive:
+```bash
+# First time: authenticate with Google
+ftp-winmount auth google --client-secrets path/to/client_secrets.json
+
+# Then mount
+ftp-winmount mount --protocol gdrive --drive G
+```
+
+Your remote server is now accessible at `Z:\` (or `G:\` for Google Drive)
 
 To unmount:
 ```bash
@@ -180,6 +197,8 @@ Or just press `Ctrl+C` in the terminal.
 ## Usage
 
 ### Command Line
+
+**FTP:**
 ```bash
 # Mount with minimal options
 ftp-winmount mount --host 192.168.0.130 --drive Z
@@ -190,6 +209,42 @@ ftp-winmount mount --host 192.168.0.130 --port 2121 --drive Z
 # Mount with authentication
 ftp-winmount mount --host ftp.example.com --user myuser --password mypass --drive Z
 
+# Mount with FTPS (FTP over TLS)
+ftp-winmount mount --protocol ftps --host ftp.example.com --drive Z
+```
+
+**SFTP (SSH):**
+```bash
+# Mount with SSH key file
+ftp-winmount mount --protocol sftp --host myserver.com --key-file ~/.ssh/id_rsa --drive Z
+
+# Mount with SSH key + custom port and username
+ftp-winmount mount --protocol sftp --host myserver.com --port 2222 --user deploy --key-file ~/.ssh/id_ed25519 --drive Z
+
+# Mount with SSH key that has a passphrase
+ftp-winmount mount --protocol sftp --host myserver.com --key-file ~/.ssh/id_rsa --key-passphrase "my passphrase" --drive Z
+
+# Mount with SSH password auth
+ftp-winmount mount --protocol sftp --host myserver.com --user myuser --password mypass --drive Z
+```
+
+**Google Drive:**
+```bash
+# Step 1: Authenticate (one-time setup, opens browser)
+ftp-winmount auth google --client-secrets path/to/client_secrets.json
+
+# Step 2: Mount your Drive
+ftp-winmount mount --protocol gdrive --drive G
+
+# Mount a specific folder
+ftp-winmount mount --protocol gdrive --root-folder FOLDER_ID_HERE --drive G
+
+# Mount a shared/team drive
+ftp-winmount mount --protocol gdrive --shared-drive "Engineering" --drive G
+```
+
+**General:**
+```bash
 # Mount with config file
 ftp-winmount mount --config config.ini
 
@@ -202,7 +257,7 @@ ftp-winmount unmount --drive Z
 
 ### Configuration File
 
-Create `config.ini`:
+Create `config.ini` for FTP:
 ```ini
 [ftp]
 host = 192.168.0.130
@@ -216,6 +271,47 @@ volume_label = My FTP Drive
 
 [cache]
 directory_ttl_seconds = 30
+
+[logging]
+level = INFO
+file = ftp-winmount.log
+```
+
+Or for SFTP:
+```ini
+[general]
+protocol = sftp
+
+[ssh]
+host = myserver.com
+port = 22
+username = deploy
+key_file = ~/.ssh/id_ed25519
+
+[mount]
+drive_letter = Z
+volume_label = My SSH Drive
+
+[cache]
+directory_ttl_seconds = 30
+
+[logging]
+level = INFO
+file = ftp-winmount.log
+```
+
+Or for Google Drive:
+```ini
+[general]
+protocol = gdrive
+
+[gdrive]
+client_secrets_file = /path/to/client_secrets.json
+# shared_drive = Engineering
+
+[mount]
+drive_letter = G
+volume_label = My Google Drive
 
 [logging]
 level = INFO
@@ -266,13 +362,53 @@ ftp-winmount mount --host SERVER_IP --port 2121 --drive Z
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--host` | FTP server hostname or IP | Required |
-| `--port` | FTP server port | 21 |
+| `--host` | Server hostname or IP | Required (FTP/SFTP) |
+| `--port` | Server port | 21 (FTP) / 22 (SFTP) |
 | `--drive` | Drive letter to mount | Required |
-| `--user` | FTP username | Anonymous |
-| `--password` | FTP password | None |
+| `--protocol` | Protocol: `ftp`, `ftps`, `sftp`, or `gdrive` | `ftp` |
+| `--user` | Username | Anonymous (FTP) |
+| `--password` | Password | None |
+| `--key-file` | Path to SSH private key (SFTP only) | None |
+| `--key-passphrase` | Passphrase for encrypted SSH key | None |
+| `--client-secrets` | Path to Google OAuth client_secrets.json | None |
+| `--root-folder` | Google Drive folder ID to mount | root |
+| `--shared-drive` | Name or ID of shared/team drive | None |
+| `--secure` | Use FTPS (FTP over TLS) | False |
 | `--config` | Path to config file | None |
 | `--verbose` | Enable debug logging | False |
+
+---
+
+## Google Drive Setup
+
+Google Drive requires a one-time OAuth setup. You need to create your own Google Cloud credentials:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a project (or select existing)
+3. Enable the **Google Drive API** (APIs & Services -> Library)
+4. Create OAuth credentials (APIs & Services -> Credentials -> Create Credentials -> OAuth client ID)
+   - Application type: **Desktop app**
+   - Download the `client_secrets.json` file
+5. Run the auth command:
+   ```bash
+   ftp-winmount auth google --client-secrets path/to/client_secrets.json
+   ```
+6. A browser window opens for Google authorization
+7. After authorizing, your token is saved to `~/.ftp-winmount/gdrive-token.json`
+8. Now you can mount:
+   ```bash
+   ftp-winmount mount --protocol gdrive --drive G
+   ```
+
+The token persists across sessions and auto-refreshes. You only need to re-authorize if you revoke access.
+
+**Google Workspace files** (Docs, Sheets, Slides, Drawings) appear as read-only exports:
+- Google Docs -> `.docx`
+- Google Sheets -> `.xlsx`
+- Google Slides -> `.pptx`
+- Google Drawings -> `.pdf`
+
+Non-exportable Workspace files (Forms, Maps, Sites) are hidden from listings.
 
 ---
 
@@ -304,6 +440,15 @@ net use Z: /delete
 
 - For anonymous FTP, ensure the server allows anonymous access
 - For authenticated FTP, check username and password
+- For SFTP, check your SSH key file path and permissions
+- For SFTP with passphrase-protected keys, use `--key-passphrase`
+
+### "SSH authentication failed"
+
+- Verify the key file path is correct and the file exists
+- If using a passphrase-protected key, provide it with `--key-passphrase`
+- Try connecting with `ssh user@host` to verify the key works
+- Check that the server allows key-based authentication
 
 ### Files appear but can't be read
 
@@ -329,7 +474,7 @@ net use Z: /delete
 - **Windows only** - This tool uses WinFsp which is Windows-specific
 - FTP protocol does not support file locking. Concurrent writes from multiple clients may cause issues.
 - Some FTP servers don't report accurate file sizes or timestamps.
-- Very large files (>1GB) may be slow due to FTP protocol limitations.
+- Very large files (>1GB) may be slow due to FTP protocol overhead (SFTP handles large files better).
 
 ---
 
@@ -389,6 +534,8 @@ MIT License. See [LICENSE](LICENSE) file.
 
 - [WinFsp](https://winfsp.dev/) - Windows File System Proxy
 - [winfspy](https://github.com/Scille/winfspy) - Python bindings for WinFsp
+- [paramiko](https://www.paramiko.org/) - Python SSH/SFTP library
+- [Google API Python Client](https://github.com/googleapis/google-api-python-client) - Google Drive API
 
 ---
 
