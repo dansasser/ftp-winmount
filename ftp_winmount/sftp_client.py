@@ -240,6 +240,11 @@ class SFTPClient:
                         self._disconnect_internal()
 
         logger.error("%s failed after %d attempts", operation, self.conn_config.retry_attempts)
+        # Preserve the original exception (and its errno) for IO errors so
+        # that callers can translate ENOENT/EACCES into the correct Python
+        # exception types via _translate_io_error.
+        if isinstance(last_exception, IOError):
+            raise last_exception
         raise OSError(f"{operation} failed: {last_exception}") from last_exception
 
     def _translate_io_error(self, error: IOError, path: str) -> Exception:

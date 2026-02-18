@@ -196,20 +196,59 @@ class GoogleDriveClient:
         logger.error("%s failed after %d attempts", operation, self.conn_config.retry_attempts)
         raise OSError(f"{operation} failed: {last_exception}") from last_exception
 
+    # Build reverse map: synthetic extension -> original Workspace MIME
+    _EXPORT_EXTENSIONS = {v["ext"] for v in WORKSPACE_EXPORT_MAP.values()}
+
+    def _strip_workspace_extension(self, name: str) -> str | None:
+        """Strip a synthetic Workspace export extension from a filename.
+
+        Returns the original Drive name (without the extension) if the name
+        ends with a known export extension, or ``None`` if no stripping was
+        needed.
+        """
+        for ext in self._EXPORT_EXTENSIONS:
+            if name.endswith(ext):
+                return name[: -len(ext)]
+        return None
+
     def _resolve_path(self, path: str) -> str:
-        """Resolve a filesystem path to a Drive file ID. Raises FileNotFoundError."""
+        """Resolve a filesystem path to a Drive file ID. Raises FileNotFoundError.
+
+        Workspace files are listed with synthetic extensions (e.g. ``.docx``),
+        but Drive stores them under their original name. If a direct lookup
+        fails and the final path component carries a known export extension,
+        the extension is stripped and the lookup is retried so that display
+        names produced by ``list_dir`` resolve correctly.
+        """
         # Use configured root folder ID for root path
         path = path.replace("\\", "/")
         if not path.startswith("/"):
             path = "/" + path
 
         if path == "/":
+            # Honour the shared-drive root when one is configured.
+            # PathCache._root_id is set to the resolved shared-drive ID
+            # (or "root" when no shared drive is in use), which is the
+            # correct parent for root-level operations.
+            if self._path_cache is not None:
+                return self._path_cache._root_id
             return self.gdrive_config.root_folder_id
 
         file_id = self._path_cache.resolve(path)
-        if file_id is None:
-            raise FileNotFoundError(f"No such file or directory: {path}")
-        return file_id
+        if file_id is not None:
+            return file_id
+
+        # Retry with the synthetic export extension stripped
+        basename = path.rsplit("/", 1)[-1]
+        original_name = self._strip_workspace_extension(basename)
+        if original_name:
+            parent = path.rsplit("/", 1)[0] or "/"
+            stripped_path = parent + "/" + original_name if parent != "/" else "/" + original_name
+            file_id = self._path_cache.resolve(stripped_path)
+            if file_id is not None:
+                return file_id
+
+        raise FileNotFoundError(f"No such file or directory: {path}")
 
     def _get_metadata(self, file_id: str) -> dict:
         """Get file metadata from Drive API."""
